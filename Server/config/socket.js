@@ -22,7 +22,7 @@ const userSocketMap = {};
 // --------------------
 const io = new Server(server, {
     cors: {
-        origin: ["http://localhost:5173"], // Allowed frontend origin
+        origin: process.env.CLIENT_URL || "/", // Allowed frontend origin
         methods: ["GET", "POST", "PUT", "DELETE"], // Allowed HTTP methods
         credentials: true, // Allow cookies & credentials
     },

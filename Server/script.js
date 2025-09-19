@@ -49,7 +49,7 @@ store.on('error', (err) =>
 // CORS configuration
 // --------------------
 const corsOptions = {
-    origin: 'http://localhost:5173', // Allowed frontend origin
+    origin: process.env.CLIENT_URL || "/", // Allowed frontend origin
     credentials: true // Allow cookies and credentials
 };
 
@@ -103,7 +103,7 @@ if (process.env.NODE_ENV === "production") {
     app.use(express.static(path.join(__dirname, '../Client/dist'))); // Serve frontend
 
     // Handle frontend routes
-    app.get('/files{/*path}', (req, res) => {
+    app.get('*', (req, res) => {
         res.sendFile(path.join(__dirname, '../Client/dist', 'index.html'));
     });
 }
