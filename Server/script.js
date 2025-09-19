@@ -111,7 +111,7 @@ if (process.env.NODE_ENV === "production") {
 // --------------------
 // Handle 404 for /files/* routes
 // --------------------
-app.all("/files{/*path}", (req, res, next) => {
+app.all("*", (req, res, next) => {
     next(new ExpressError(404, "Page not found!")); // Custom 404 error
 });
 
