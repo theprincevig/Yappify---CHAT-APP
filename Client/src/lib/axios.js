@@ -9,7 +9,7 @@ export const axiosInstance = axios.create({
     // Dynamically set the base URL:
     // - Use '/' for production (relative to deployed domain)
     // - Use VITE_API_BASE_URL from environment variables for development
-    baseURL: import.meta.env.VITE_BASE_URL || "/",    
+    baseURL: import.meta.env.VITE_BASE_URL || "https://yappify.onrender.com",    
     withCredentials: true   // Send cookies and authentication headers with every request
 });
 
