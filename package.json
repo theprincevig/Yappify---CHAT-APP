@@ -1,0 +1,14 @@
+{
+  "name": "yappify---chat-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "script.js",
+  "scripts": {
+    "build": "npm install --prefix Client && npm install --prefix Server && npm run build --prefix Client",
+    "start": "npm run start --prefix Server"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
