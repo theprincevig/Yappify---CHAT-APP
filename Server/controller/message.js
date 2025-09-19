@@ -1,11 +1,11 @@
 // Import the Message model
-const Message = require("../models/message");
+const Message = require("../models/message.js");
 // Import the Chat model
-const Chat = require("../models/chat");
+const Chat = require("../models/Chat.js");
 // Import the FriendRequest model
-const FriendRequest = require("../models/friendRequest");
+const FriendRequest = require("../models/friendRequest.js");
 // Import the push notification utility
-const { sendNotificationToUser } = require("../utils/pushNotification");
+const { sendNotificationToUser } = require("../utils/pushNotification.js");
 // Import socket helpers and io instance
 const { getReceiverSocketId, io } = require("../config/socket");
 
