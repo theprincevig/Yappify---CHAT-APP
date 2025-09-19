@@ -15,7 +15,7 @@ export const getSocket = (userId) => {
     // ---------------------------------------------
     // - Production: Use relative path ('/')
     // - Development: Use API base URL from environment variables
-    const URL = import.meta.env.VITE_BASE_URL || "https://yappify.onrender.com";
+    const URL = import.meta.env.VITE_BASE_URL || "/";
 
     // ---------------------------------------------
     // Create and configure the socket.io client

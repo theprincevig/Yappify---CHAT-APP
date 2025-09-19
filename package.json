@@ -1,14 +1,13 @@
 {
-  "name": "yappify---chat-app",
+  "name": "yappify",
   "version": "1.0.0",
-  "description": "",
-  "main": "script.js",
+  "type": "commonjs",
   "scripts": {
-    "build": "npm install --prefix Client && npm install --prefix Server && npm run build --prefix Client",
-    "start": "npm run start --prefix Server"
+    "install-client": "npm install --prefix Client",
+    "install-server": "npm install --prefix Server",
+    "build": "npm run install-client && npm run install-server && npm run build --prefix Client",
+    "start": "node Server/script.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs"
+  "author": "Prince Vig",
+  "license": "ISC"
 }

@@ -22,7 +22,7 @@ const userSocketMap = {};
 // --------------------
 const io = new Server(server, {
     cors: {
-        origin: process.env.CLIENT_URL || "https://yappify.onrender.com", // Allowed frontend origin
+        origin: process.env.CLIENT_URL || "/", // Allowed frontend origin
         methods: ["GET", "POST", "PUT", "DELETE"], // Allowed HTTP methods
         credentials: true, // Allow cookies & credentials
     },

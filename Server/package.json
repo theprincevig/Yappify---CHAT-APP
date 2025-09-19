@@ -2,18 +2,14 @@
   "engines": {
     "node": "22.14.0"
   },
-  "name": "yappify",
+  "name": "yappify-server",
   "version": "1.0.0",
-  "description": "",
   "main": "script.js",
+  "type": "commonjs",
   "scripts": {
     "dev": "nodemon script.js",
     "start": "node script.js"
   },
-  "keywords": [],
-  "author": "Prince Vig",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
     "cloudinary": "^1.41.3",
     "connect-mongo": "^5.1.0",

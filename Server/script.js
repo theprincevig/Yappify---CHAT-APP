@@ -49,7 +49,7 @@ store.on('error', (err) =>
 // CORS configuration
 // --------------------
 const corsOptions = {
-    origin: process.env.CLIENT_URL || "https://yappify.onrender.com", // Allowed frontend origin
+    origin: process.env.CLIENT_URL || "/", // Allowed frontend origin
     credentials: true // Allow cookies and credentials
 };
 
@@ -100,11 +100,12 @@ app.use("/chat/friend", friendRouter); // Friend endpoints
 // Serve static files in production
 // --------------------
 if (process.env.NODE_ENV === "production") {
-    app.use(express.static(path.join(__dirname, '../Client/dist'))); // Serve frontend
+    const clientBuildPath = path.join(__dirname, '../Client/dist');
+    app.use(express.static(clientBuildPath)); // Serve frontend
 
     // Handle frontend routes
     app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, '../Client/dist', 'index.html'));
+        res.sendFile(path.join(clientBuildPath, 'index.html'));
     });
 }
 
