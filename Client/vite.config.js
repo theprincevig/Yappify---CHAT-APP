@@ -9,7 +9,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           react: ["react", "react-dom"],
-          ui: ["lucide-react", "@headlessui/react", "clsx"],
+          ui: ["lucide-react", "@headlessui/react"],
           socket: ["socket.io-client"],
         },
       },
