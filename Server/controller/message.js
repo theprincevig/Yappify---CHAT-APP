@@ -1,7 +1,7 @@
 // Import the Message model
 const Message = require("../models/message");
 // Import the Chat model
-const Chat = require("../models/Chat");
+const Chat = require("../models/chat");
 // Import the FriendRequest model
 const FriendRequest = require("../models/friendRequest");
 // Import the push notification utility
