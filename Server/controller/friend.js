@@ -4,7 +4,7 @@
 const FriendRequest = require('../models/friendRequest'); // FriendRequest model (schema)
 const { sendNotificationToUser } = require('../utils/pushNotification'); // Push notification helper
 const User = require('../models/user'); // User model (schema)
-const Chat = require('../models/chat'); // Chat model (schema)
+const Chat = require('../models/Chat'); // Chat model (schema)
 const emitToUser = require('../utils/emitToUser'); // Socket event emitter (to specific user)
 
 // --------------------
