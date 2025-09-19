@@ -19,12 +19,7 @@ module.exports.connectDB = async () => {
 
     try {
         // Try connecting to MongoDB using Mongoose
-        const conn = await mongoose.connect(DB_URL, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        // useCreateIndex: true,   // (removed in Mongoose 6+)
-        // useFindAndModify: false // (removed in Mongoose 6+)
-    });
+        const conn = await mongoose.connect(DB_URL);
 
         // ✅ Connection successful (disabled for production use)
         console.log(`Connected to DB: --> ${conn.connection.name} <--`);
