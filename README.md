@@ -89,7 +89,7 @@ Server/
 
 1. **Clone the repo:**
    ```bash
-   git clone https://github.com/yourusername/yappify-chat-app.git
+   git clone https://github.com/theprincevig/Yappify---CHAT-APP.git
    ```
 
 2. **Install dependencies:**
