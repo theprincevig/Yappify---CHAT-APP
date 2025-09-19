@@ -4,6 +4,18 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ["react", "react-dom"],
+          ui: ["lucide-react", "@headlessui/react", "clsx"],
+          socket: ["socket.io-client"],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
+  },
   plugins: [
     react(), tailwindcss()
   ],
