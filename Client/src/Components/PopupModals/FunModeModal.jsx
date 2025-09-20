@@ -122,7 +122,7 @@ export default function FunModeModal({ onClose }) {
                 <button
                     onClick={handleSelectMode}
                     disabled={loading}
-                    className="w-[60%] sm:w-full mt-6 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 font-semibold font-[Poppins] py-2 sm:py-3 rounded-lg cursor-pointer duration-150"
+                    className="w-[60%] sm:w-full flex items-center justify-center mt-6 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 font-semibold font-[Poppins] py-2 sm:py-3 rounded-lg cursor-pointer duration-150"
                 >
                     {loading ? <Loader size={16} className="animate-spin" /> : "Confirm"}
                 </button>

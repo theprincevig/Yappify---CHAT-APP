@@ -156,7 +156,7 @@ export default function ChatBody({ messages, selectedUser, currentChatId }) {
                         </div>
 
                         {/* (Optional) Chat Header: Username/Time */}
-                        <div className="chat-header mb-1 flex items-center" />
+                        {/* <div className="chat-header mb-1 flex items-center" /> */}
 
                         <div className={`flex items-center gap-4 ${isOwnMessage ? "flex-row-reverse" : "flex-row"}`}>
                             {/* ──────────────── 💬 Message Bubble ──────────────── */}
@@ -198,16 +198,19 @@ export default function ChatBody({ messages, selectedUser, currentChatId }) {
                                 )}
 
                                 {/* 📝 Text Content */}
-                                <p className={`
-                                    ${msg.deleted ? "font-light myfont-AU-NSW" : "font-semibold font-[Poppins]"} 
-                                    ${isOwnMessage ? "text-left" : "text-right"}
-                                `}>
+                                <p 
+                                    className={`
+                                        ${msg.deleted ? "font-light myfont-AU-NSW" : "font-semibold font-[Poppins]"} 
+                                        ${isOwnMessage ? "text-left" : "text-right"}
+                                        pointer-events-none select-none
+                                    `}
+                                >
                                     {msg.content}
                                 </p>                                
 
                                 {/* ⏱️ Timestamp */}
                                 <time
-                                    className={`text-[10px] mt-1 opacity-50 ${
+                                    className={`text-[10px] mt-1 opacity-50 pointer-events-none select-none ${
                                         isOwnMessage ? "self-end text-right" : "self-start text-left"
                                     }`}
                                 >

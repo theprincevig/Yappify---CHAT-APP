@@ -12,7 +12,7 @@ export default function MessageActionModal({ message, isOwnMessage, isLastMessag
                 ${isOwnMessage ? "right-8 md:right-20" : "left-8 md:left-20"} 
                 ${isLastMessage ? "bottom-10" : "top-10"}
                 backdrop-blur-md flex gap-1 bg-black/40 
-                rounded-lg shadow p-2 z-10
+                rounded-lg shadow p-2 z-100
             `}
         >
             {/* Container for all action items */}

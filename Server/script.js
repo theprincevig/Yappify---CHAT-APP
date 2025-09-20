@@ -1,6 +1,8 @@
 // Load environment variables from .env file when not in production
 if (process.env.NODE_ENV !== "production") {
-    require('dotenv').config();
+    require('dotenv').config({ path: '.env.development' });
+} else {
+    require('dotenv').config({ path: '.env.production' });
 }
 
 // Port number where the server will run
@@ -49,7 +51,9 @@ store.on('error', (err) =>
 // CORS configuration
 // --------------------
 const corsOptions = {
-    origin: process.env.CLIENT_URL || "http://localhost:5173", // Allowed frontend origin
+    origin: process.env.NODE_ENV === 'production' 
+        ? process.env.CLIENT_URL 
+        : 'http://localhost:5173', // Allowed frontend origin
     credentials: true // Allow cookies and credentials
 };
 

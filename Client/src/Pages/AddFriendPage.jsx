@@ -148,8 +148,8 @@ export default function AddFriendPage() {
                 Page Heading
             -------------------------------- */}
             <div className="text-center mb-8">
-                <h1 className="text-3xl font-bold tracking-wider myfont-kaushan">Add Friends</h1>
-                <p className="text-base-content/70 font-[Poppins]">Search for friends by username and manage requests</p>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-wider myfont-kaushan">Add Friends</h1>
+                <p className="text-base-content/70 text-xs sm:text-base font-[Poppins]">Search for friends by username and manage requests</p>
             </div>
 
             {/* -------------------------------

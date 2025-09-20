@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import { useFriendStore } from "../../store/useFriendStore";
+import { useThemeStore } from "../../store/useThemeStore";
 import { Loader2, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { Link } from "react-router-dom";
 
 export default function PendingRequestsModal({ isOpen, onClose }) {
     // Accessing friend-related state and actions from our custom store
@@ -13,6 +15,7 @@ export default function PendingRequestsModal({ isOpen, onClose }) {
         rejectRequest,
         cancelRequest
     } = useFriendStore();
+    const { theme } = useThemeStore();
 
     // 🔄 Fetch pending requests when the modal is opened
     useEffect(() => {
@@ -55,9 +58,14 @@ export default function PendingRequestsModal({ isOpen, onClose }) {
 
     return (
         // The backdrop with a blur effect
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs mx-2">
             {/* Modal Container */}
-            <div className="bg-black/60 rounded-2xl shadow-lg w-full max-w-lg p-6">
+            <div 
+                className={`
+                    ${theme === "dark" ? "bg-black/60" : "bg-white/60"} 
+                    rounded-2xl shadow-lg w-full max-w-lg p-6
+                `}
+            >
                 {/* Header Section */}
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold opacity-70">
@@ -105,9 +113,9 @@ export default function PendingRequestsModal({ isOpen, onClose }) {
                                                     className="size-10 rounded-box"
                                                 />
                                                 <div>
-                                                    <p className="text-lg">
+                                                    <Link to={`/chat/profile/${req.sender._id}`} className="text-base sm:text-lg">
                                                         @{req.sender.username}
-                                                    </p>
+                                                    </Link>
                                                     <p className="text-xs ml-2 uppercase font-semibold opacity-60">
                                                         {req.sender.fullName}
                                                     </p>
@@ -115,7 +123,7 @@ export default function PendingRequestsModal({ isOpen, onClose }) {
                                             </div>
 
                                             {/* Action Buttons */}
-                                            <div className="flex gap-2">
+                                            <div className="flex gap-2 font-[Poppins]">
                                                 <button
                                                     className="btn btn-sm btn-success"
                                                     onClick={() =>
@@ -144,7 +152,13 @@ export default function PendingRequestsModal({ isOpen, onClose }) {
                                 </div>
                             ) : (
                                 // Displayed when there are no received requests
-                                <p className="text-sm text-center text-gray-500 font-[Poppins]">
+                                <p 
+                                    className={`
+                                        text-sm text-center 
+                                        ${theme === "dark" ? "text-zinc-500 " : "text-zinc-400 "}
+                                        font-[Poppins]
+                                    `}
+                                >
                                     No received requests.
                                 </p>
                             )}
@@ -177,9 +191,9 @@ export default function PendingRequestsModal({ isOpen, onClose }) {
                                                     className="size-10 rounded-box"
                                                 />
                                                 <div>
-                                                    <p className="text-lg">
+                                                    <Link to={`/chat/profile/${req.receiver._id}`} className="text-base sm:text-lg">
                                                         @{req.receiver.username}
-                                                    </p>
+                                                    </Link>
                                                     <p className="text-xs ml-2 uppercase font-semibold opacity-60">
                                                         {req.receiver.fullName}
                                                     </p>
@@ -187,7 +201,7 @@ export default function PendingRequestsModal({ isOpen, onClose }) {
                                             </div>
 
                                             {/* Action Buttons */}
-                                            <div className="flex gap-2">
+                                            <div className="flex gap-2 font-[Poppins]">
                                                 {/* Disabled button indicating the request is pending */}
                                                 <button className="btn btn-sm btn-disabled">
                                                     Pending
@@ -209,7 +223,13 @@ export default function PendingRequestsModal({ isOpen, onClose }) {
                                 </div>
                             ) : (
                                 // Displayed when there are no sent requests
-                                <p className="text-sm text-center text-gray-500 font-[Poppins]">
+                                <p 
+                                    className={`
+                                        text-sm text-center 
+                                        ${theme === "dark" ? "text-zinc-500 " : "text-zinc-400 "}
+                                        font-[Poppins]
+                                    `}
+                                >
                                     No sent requests.
                                 </p>
                             )}

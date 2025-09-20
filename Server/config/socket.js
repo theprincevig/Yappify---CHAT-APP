@@ -20,9 +20,13 @@ const userSocketMap = {};
 // --------------------
 // Socket.IO setup
 // --------------------
+const allowedOrigin = process.env.NODE_ENV === "production" 
+    ? process.env.CLIENT_URL
+    : "http://localhost:5173";
+
 const io = new Server(server, {
     cors: {
-        origin: process.env.CLIENT_URL || "http://localhost:5173", // Allowed frontend origin
+        origin: allowedOrigin, // Allowed frontend origin
         methods: ["GET", "POST", "PUT", "DELETE"], // Allowed HTTP methods
         credentials: true, // Allow cookies & credentials
     },
