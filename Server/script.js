@@ -49,7 +49,7 @@ store.on('error', (err) =>
 // CORS configuration
 // --------------------
 const corsOptions = {
-    origin: process.env.CLIENT_URL || "/", // Allowed frontend origin
+    origin: process.env.CLIENT_URL || "http://localhost:5173", // Allowed frontend origin
     credentials: true // Allow cookies and credentials
 };
 
