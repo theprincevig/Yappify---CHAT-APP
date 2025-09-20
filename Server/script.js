@@ -73,6 +73,7 @@ const sessionOptions = {
 // --------------------
 // Middleware setup
 // --------------------
+app.set('trust proxy', 1);  // Trust proxy for HTTPS cookies in production
 app.use(express.json()); // Parse JSON requests
 app.use(express.urlencoded({ extended: true })); // Parse form submissions
 app.use(cors(corsOptions)); // Enable CORS
