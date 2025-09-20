@@ -99,13 +99,15 @@ app.use("/chat/friend", friendRouter); // Friend endpoints
 // --------------------
 // Serve static files in production
 // --------------------
-const clientBuildPath = path.join(__dirname, '../Client/dist');
-app.use(express.static(clientBuildPath)); // Serve frontend
+if (process.env.NODE_ENV === "production") {
+    const clientBuildPath = path.join(__dirname, '../Client/dist');
+    app.use(express.static(clientBuildPath)); // Serve frontend
 
-// Handle frontend routes
-app.get('/files{/*path}', (req, res) => {
-    res.sendFile(path.join(clientBuildPath, 'index.html'));
-});
+    // Handle frontend routes
+    app.get('/files{/*path}', (req, res) => {
+        res.sendFile(path.join(clientBuildPath, 'index.html'));
+    });
+}
 
 // --------------------
 // Handle 404 for /files/* routes
