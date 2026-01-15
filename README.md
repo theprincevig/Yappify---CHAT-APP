@@ -1,11 +1,11 @@
-# 🎉 Yappify - CHAT APP
+# Yappify - CHAT APP
 
 Yappify is a friends-only chat app built to keep conversations **fun**, **simple**, and **personal**.  
 Whether you want to chat, react, or customize your profile, Yappify puts you in control of your social experience.
 
 ---
 
-## 🚀 Core Features
+## Core Features
 
 - **Friend Requests:**  
   Send, accept, reject, or remove friend requests. Only accepted friends can chat!
@@ -21,7 +21,7 @@ Whether you want to chat, react, or customize your profile, Yappify puts you in 
 
 ---
 
-## 🌟 Unique Feature: Choose Your Notification Style
+## Unique Feature: Choose Your Notification Style
 
 On your very first signup, Yappify lets you pick your notification mode:
 
@@ -37,9 +37,7 @@ This special choice makes Yappify stand out from the crowd!
 
 ---
 
-## 🛠️ Tech Stack
-
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Frontend:**  
   ![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)  
@@ -64,7 +62,7 @@ This special choice makes Yappify stand out from the crowd!
 
 ---
 
-## 📦 Project Structure
+## Project Structure
 
 ```
 Client/
@@ -85,7 +83,7 @@ Server/
 
 ---
 
-## 📲 Getting Started
+## Getting Started
 
 1. **Clone the repo:**
    ```bash
@@ -115,14 +113,14 @@ Server/
 
 ---
 
-## 💡 Contributing
+## Contributing
 
 Pull requests and suggestions are welcome!  
 Feel free to open issues for bugs or feature requests.
 
 ---
 
-## 📜 License
+## License
 
 MIT
 
