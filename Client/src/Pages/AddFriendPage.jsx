@@ -17,6 +17,9 @@ export default function AddFriendPage() {
     // Store & State Initialization
     // -----------------------------
     const {
+        pendingRequests,
+        hasNewPending,
+        setHasNewPending,
         searchUser,
         searchResult: storeSearchResult,
         loading,
@@ -139,6 +142,11 @@ export default function AddFriendPage() {
         useFriendStore.setState({ searchResult: null });
     }
 
+    const handlePendingModal = () => {
+        setIsModalOpen(true);
+        setHasNewPending(false);    // mark as seen
+    }
+
     // ---------------------------------
     // Render UI
     // ---------------------------------
@@ -156,13 +164,23 @@ export default function AddFriendPage() {
                 Pending Requests Modal Button
             -------------------------------- */}
             <div className="flex justify-center mb-6">
+                
                 <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="btn btn-outline btn-sm btn-secondary font-[Comfortaa] tracking-wide rounded-lg flex items-center gap-2"
+                    onClick={handlePendingModal}
+                    className="btn btn-outline btn-sm btn-secondary font-[Comfortaa] tracking-wide rounded-lg flex items-center gap-2 relative"
                 >
+                    {hasNewPending && (
+                        <div className="indicator absolute top-0 right-0">
+                            <span className="indicator-item badge badge-primary w-10 h-5 text-xs myfont-kaushan font-light">New</span>
+                        </div>
+                    )}
                     <Users size={15} /> Pending Requests
                 </button>
-                <PendingRequestsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+                <PendingRequestsModal 
+                    pendingRequests={pendingRequests}
+                    isOpen={isModalOpen} 
+                    onClose={() => setIsModalOpen(false)} 
+                />
             </div>
 
             {/* -------------------------------
@@ -172,7 +190,7 @@ export default function AddFriendPage() {
                 <label className="input input-bordered flex items-center gap-2 flex-1 rounded-xl">
                     {username.length > 0 ? (
                         <button type="button" onClick={handleReset}>
-                            <X size={20} className="opacity-70 hover:opacity-100 cursor-pointer" />
+                            <X size={20} className="opacity-70 hover:opacity-100 transition-all cursor-pointer" />
                         </button>
                     ) : (
                         <Users size={20} className="opacity-70" />
@@ -192,7 +210,7 @@ export default function AddFriendPage() {
                 >
                     {loading ? <Loader size={16} className="animate-spin" /> : <Search size={18} />} Search
                 </button>
-            </form>            
+            </form>
 
             {/* -------------------------------
                 Search Result Card

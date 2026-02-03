@@ -1,45 +1,55 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 
-const userController = require('../controller/user.js');        // User controller
-const wrapAsync = require('../middleware/wrapAsync.js');        // Async wrapper for error handling
-const { isLoggedIn } = require('../middleware/auth.js');        // Middleware to check if user is authenticated
-const { validateUsername } = require('../middleware/validateUsername.js'); // Middleware to validate username
-const authenticateLocal = require('../middleware/passportAuth.js'); // Passport local authentication middleware
+const userController = require("../controller/user.js");
+const wrapAsync = require("../middleware/wrapAsync.js");
+const { isLoggedIn } = require("../middleware/auth.js");
+const { validateUsername } = require("../middleware/validateUsername.js");
+const authenticateLocal = require("../middleware/passportAuth.js");
 
-// --------------------
-// Check if user is logged in
-// --------------------
-router.get("/checkAuth", isLoggedIn, wrapAsync(userController.checkAuth));
+/* ======================
+   SESSION (AUTH)
+====================== */
 
-// --------------------
-// User signup
-// --------------------
-router.post("/signup", validateUsername, wrapAsync(userController.signupUser));
+// Get current session
+router.route("/session")
+      .get(isLoggedIn, wrapAsync(userController.checkAuth))
+      .post(authenticateLocal, wrapAsync(userController.loginUser))
+      .delete(wrapAsync(userController.logoutUser));
 
-// --------------------
-// User login
-// --------------------
-router.post("/login", authenticateLocal, wrapAsync(userController.loginUser));
+/* ======================
+   USERS
+====================== */
 
-// --------------------
-// User logout
-// --------------------
-router.post("/logout", userController.logoutUser);
+// Signup
+router.post("/users", validateUsername, wrapAsync(userController.signupUser));
 
-// --------------------
-// Set fun mode after signup (protected route)
-// --------------------
-router.post("/set-fun-mode", isLoggedIn, wrapAsync(userController.setFunMode));
+/* ======================
+   EMAIL VERIFICATION
+====================== */
 
-// --------------------
-// Save push notification subscription (protected route)
-// --------------------
-router.post("/save-subscription", isLoggedIn, wrapAsync(userController.saveSubscription));
+router.post("/email/verification", wrapAsync(userController.verifyEmail));
+router.post("/email/verification/resend", wrapAsync(userController.resendVerificationEmail));
 
-// --------------------
-// Toggle notifications (only applicable for "control" mode users)
-// --------------------
-router.post("/toggle-notifications", isLoggedIn, wrapAsync(userController.toggleNotifications));
+/* ======================
+   PASSWORD
+====================== */
+
+router.post("/password/forgot", wrapAsync(userController.forgotPassword));
+router.post("/password/reset/:token", wrapAsync(userController.resetPassword));
+router.patch("/password", isLoggedIn, wrapAsync(userController.changePassword));
+
+/* ======================
+   PREFERENCES
+====================== */
+
+router.patch("/preferences/mode", isLoggedIn, wrapAsync(userController.updateNotifications));
+
+/* ======================
+   NOTIFICATIONS
+====================== */
+
+router.post("/notifications/subscription", isLoggedIn, wrapAsync(userController.saveSubscription));
+router.patch("/notifications", isLoggedIn, wrapAsync(userController.toggleNotifications));
 
 module.exports = router;

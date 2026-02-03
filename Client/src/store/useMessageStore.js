@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
-import { useAuthStore } from "./useAuthStore"; // ✅ Auth store import
+import { useAuthStore } from "./useAuthStore"; // Auth store import
+import { API_PATHS } from "../utils/apiPaths";
 
 /**
  * ============================
@@ -73,17 +74,17 @@ export const useMessageStore = create((set, get) => ({
   /**
    * Fetch sidebar users/chats.
    */
-  getUsersForSidebar: async () => {
+  getChats: async () => {
     const { authUser, isCheckingAuth } = useAuthStore.getState();
 
     if (isCheckingAuth || !authUser?._id) {
-      // ⛔ Prevent API call if auth not ready or user not logged in
+      // Prevent API call if auth not ready or user not logged in
       set({ users: [] });
       return;
     }
 
     try {
-      const res = await axiosInstance.get("/chat");
+      const res = await axiosInstance.get(API_PATHS.CHATS.GET_CHATS);
 
       if (res.data.success) {
         set({ users: res.data.users });
@@ -104,7 +105,7 @@ export const useMessageStore = create((set, get) => ({
   getMessages: async (chatId, limit = 20, skip = 0) => {
     set({ loading: true, error: null });
     try {
-      const res = await axiosInstance.get(`/chat/${chatId}/message`, {
+      const res = await axiosInstance.get(API_PATHS.CHATS.MESSAGES(chatId), {
         params: { limit, skip },
       });
 
@@ -149,12 +150,12 @@ export const useMessageStore = create((set, get) => ({
     const { authUser, isCheckingAuth } = useAuthStore.getState();
 
     if (isCheckingAuth || !authUser?._id) {
-      console.log("⛔ Skipping unread counts fetch - no authUser");
+      console.log("Skipping unread counts fetch - no authUser");
       return;
     }
     
     try {
-      const res = await axiosInstance.get("/chat/unread-counts");
+      const res = await axiosInstance.get(API_PATHS.CHATS.UNREAD_COUNTS);
       if (res.data.success) set({ unreadCounts: res.data.unreadCounts });
 
     } catch (err) {
@@ -185,8 +186,8 @@ export const useMessageStore = create((set, get) => ({
       if (replyingTo?._id) formData.append("replyTo", replyingTo._id);
 
       const endpoint = currentChatId
-        ? `/chat/${currentChatId}/message`
-        : `/chat/${targetUserId}/message`;
+        ? API_PATHS.CHATS.MESSAGES(currentChatId)
+        : API_PATHS.CHATS.MESSAGES(targetUserId);
 
       const res = await axiosInstance.post(endpoint, formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -220,9 +221,9 @@ export const useMessageStore = create((set, get) => ({
   /**
    * Delete a message.
    */
-  deleteMessage: async (messageId) => {
+  deleteMessage: async (chatId, messageId) => {
     try {
-      const res = await axiosInstance.delete(`/chat/message/${messageId}`);
+      const res = await axiosInstance.delete(API_PATHS.CHATS.DELETE_MESSAGE(chatId, messageId));
 
       if (res.data.success) {
         set((state) => ({
@@ -242,9 +243,9 @@ export const useMessageStore = create((set, get) => ({
   /**
    * React to a message with emoji.
    */
-  reactToMessage: async (messageId, emoji) => { 
+  upsertReaction: async (chatId, messageId, emoji) => { 
     try { 
-      const res = await axiosInstance.post(`/chat/message/${messageId}/react`, { emoji });
+      const res = await axiosInstance.post(API_PATHS.CHATS.UPSERT_REACTION(chatId, messageId), { emoji });
 
       if (res.data.success) {
         set((state) => ({ 
@@ -263,9 +264,9 @@ export const useMessageStore = create((set, get) => ({
   /**
    * Forward a message to another chat.
    */
-  forwardMessage: async (messageId, targetChatId) => {
+  forwardMessage: async (chatId, messageId, targetChatId) => {
     try {
-      const res = await axiosInstance.post(`/chat/message/${messageId}/forward`, { targetChatId });
+      const res = await axiosInstance.post(API_PATHS.CHATS.FORWARD(chatId, messageId), { targetChatId });
       
       if (res.data.success) {
         toast.success("Message forwarded"); 
@@ -278,9 +279,9 @@ export const useMessageStore = create((set, get) => ({
   /**
    * Mark all messages in a chat as read.
    */
-  markMessagesAsRead: async (chatId) => {
+  readStatus: async (chatId) => {
     try {
-      await axiosInstance.put(`/chat/message/mark-read/${chatId}`);
+      await axiosInstance.patch(API_PATHS.CHATS.READ_STATUS(chatId));
       // No manual store update; socket "messagesRead" event will handle it
     } catch (err) {
       toast.error( err.response?.data?.error || "Failed to mark messages as read" );
@@ -296,12 +297,12 @@ export const useMessageStore = create((set, get) => ({
    */
   initializeSocketListeners: (allChatIds = []) => {
     get().disconnectSocketListeners();
-    const { connectedSocket: socket } = useAuthStore.getState(); // ✅ Get live socket
+    const { connectedSocket: socket } = useAuthStore.getState(); // Get live socket
     if (!socket) return;
 
     // Join all chat rooms for real-time events
     if (Array.isArray(allChatIds) && allChatIds.length > 0) {
-      console.log("📌 Joining chat room:", allChatIds);
+      console.log("Joining chat room:", allChatIds);
       socket.emit("joinChats", allChatIds);
     }
 
@@ -323,7 +324,7 @@ export const useMessageStore = create((set, get) => ({
         get().resetUnreadCount(chatId);
 
         // Mark as read in backend
-        get().markMessagesAsRead(chatId);
+        get().readStatus(chatId);
       } else {
         // Not open → increment unread
         get().incrementUnreadCount(chatId);
@@ -359,7 +360,7 @@ export const useMessageStore = create((set, get) => ({
     // --- Message deleted ---
     socket.on("messageDeleted", ({ messageId, chatId }) => {
       const { currentChatId } = get();
-      console.log("🗑️ [FRONTEND RECEIVED messageDeleted]", { messageId, chatId });
+      console.log("[FRONTEND RECEIVED messageDeleted]", { messageId, chatId });
 
       if (!currentChatId || currentChatId.toString() !== chatId?.toString()) return;
 
@@ -466,7 +467,7 @@ export const useMessageStore = create((set, get) => ({
 
     events.forEach((event) => {
       socket.off(event);
-      console.log(`🔌 [SOCKET OFF ${event}]`);
+      console.log(`[SOCKET OFF ${event}]`);
     });
   },
 

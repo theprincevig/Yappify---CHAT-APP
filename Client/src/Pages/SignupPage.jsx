@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { Eye, EyeOff, KeyRound, Loader, Mail, User } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import FunModeModal from "../Components/PopupModals/FunModeModal";
+import PasswordStrengthMeter from "../Components/PasswordStrengthMeter";
 
 // =======================
 //   Signup Page Component
@@ -21,6 +22,7 @@ export default function SignupPage() {
     // =======================
     const [showPassword, setShowPassword] = useState(false);
     const [formData, setFormData] = useState(data);
+    const navigate = useNavigate();
 
     // =======================
     //   Auth Store Hooks
@@ -35,8 +37,11 @@ export default function SignupPage() {
 
         try {
             await signup(formData); // Call signup from store
-            toast.success("Welcome to Yappify!");
+            toast.error("Your email needs to Verified.");
             setFormData(data); // Reset form
+
+            // Navigate to email verification after a short delay
+            setTimeout(() => navigate("/verify-email"), 600);
         } catch (error) {
             toast.error(error.response?.data?.message || "Signup failed!");
             console.log(error);
@@ -52,7 +57,7 @@ export default function SignupPage() {
 
                 {/* ===== Logo & Welcome Text ===== */}
                 <div className="text-center mb-12">
-                    <h1 className="text-4xl font-bold tracking-wider mt-2 mb-4" style={{fontFamily: "'Kaushan Script', sans serif"}}>
+                    <h1 className="text-4xl font-bold myfont-kaushan tracking-wider mt-2 mb-4">
                         Join Yappify!
                     </h1>
                     <p className="text-base-content/60 text-xs font-[Poppins]">
@@ -134,8 +139,21 @@ export default function SignupPage() {
                                 )}
                             </button>
                         </label>
-                        <div className="validator-hint text-left ml-2 hidden">
-                            Must be more than 8 characters, including
+                        {/* Password Strength Meter - Only show if password is not empty */}
+                        <div
+                            className={`overflow-hidden transition-all duration-300 ease-in-out`}
+                            style={{
+                                maxHeight: formData.password ? "200px" : "0px", // adjust according to your PasswordStrengthMeter height
+                            }}
+                        >
+                            <div
+                                className="transform origin-top transition-transform duration-300 ease-in-out"
+                                style={{
+                                    transform: formData.password ? "scaleY(1)" : "scaleY(0)",
+                                }}
+                            >
+                                <PasswordStrengthMeter password={formData.password} />
+                            </div>
                         </div>
                     </div>
 

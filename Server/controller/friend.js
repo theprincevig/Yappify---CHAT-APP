@@ -1,53 +1,58 @@
-// --------------------
+// =====================
 // IMPORTS & UTILITIES
-// --------------------
-const FriendRequest = require('../models/friendRequest'); // FriendRequest model (schema)
-const { sendNotificationToUser } = require('../utils/pushNotification'); // Push notification helper
-const User = require('../models/user'); // User model (schema)
-const Chat = require('../models/Chat'); // Chat model (schema)
-const emitToUser = require('../utils/emitToUser'); // Socket event emitter (to specific user)
+// =====================
+const FriendRequest = require("../models/friendRequest");
+const User = require("../models/user");
+const Chat = require("../models/Chat");
+
+const { sendNotificationToUser } = require("../utils/pushNotification");
+const emitToUser = require("../utils/emitToUser");
 
 // --------------------
 // SEND FRIEND REQUEST
 // --------------------
 module.exports.sendRequest = async (req, res) => {
     try {
-        const { id: receiverId } = req.params; // Extract receiver (target user) ID
         const senderId = req.user._id; // Logged-in user (sender ID)
+        const { userId: receiverId } = req.body; // Extract receiver (target user) ID
 
-        // ❌ Prevent sending a request to yourself
+        if (!receiverId) return res.status(400).json({ success: false, error: "UserId is required" });
+
+        // Prevent sending a request to yourself
         if (senderId.equals(receiverId)) {
             return res.status(400).json({ success: false, error: "You can't send a friend request to yourself." });
         }
 
-        // 🔍 Check if request already exists (either direction)
-        const requestExists = await FriendRequest.findOne({
+        const receriverExist = await User.findById(receiverId);
+        if (!receriverExist) return res.status(400).json({ success: false, error: "User not found" });
+
+        // Check if request already exists (either direction)
+        const existing = await FriendRequest.findOne({
             $or: [
                 { sender: senderId, receiver: receiverId },
                 { sender: receiverId, receiver: senderId }
             ]
         });
 
-        if (requestExists) {
+        if (existing) {
             return res.status(400).json({ success: false, error: "Friend request already exists." });
         }
 
-        // ✅ Create new request
+        // Create new request
         const request = await FriendRequest.create({ sender: senderId, receiver: receiverId });
 
-        // 🔔 Send push notification to receiver
-        const receiver = await User.findById(receiverId);
-        if (receiver) {
-            sendNotificationToUser(receiver._id, {
+        // Send push notification to receiver
+        if (receriverExist) {
+            sendNotificationToUser(receriverExist._id, {
                 title: 'New Friend Request',
                 body: `${req.user.username} sent you a friend request.`,
             });
         }
 
-        // 📡 Emit socket event → notify receiver
+        // Emit socket event → notify receiver
         emitToUser(receiverId, "friendRequestReceived", {
             sender: {
-                _id: req.user._id,
+                _id: senderId,
                 username: req.user.username,
                 profilePic: req.user.profilePic || "/avatar.png"
             },
@@ -67,9 +72,9 @@ module.exports.sendRequest = async (req, res) => {
 module.exports.cancelRequest = async (req, res) => {
     try {
         const senderId = req.user._id; // Logged-in user (sender)
-        const { id: receiverId } = req.params; // Target user ID
+        const { userId: receiverId } = req.params; // Target user ID
 
-        // ❌ Delete pending request
+        // Delete pending request
         const deleted = await FriendRequest.findOneAndDelete({
             sender: senderId,
             receiver: receiverId,
@@ -92,10 +97,10 @@ module.exports.cancelRequest = async (req, res) => {
 // --------------------
 module.exports.acceptRequest = async (req, res) => {
     try {
-        const { id: senderId } = req.params; // Request sender ID
         const receiverId = req.user._id; // Current user (acceptor)
+        const { userId: senderId } = req.params; // Request sender ID
 
-        // ✅ Update request status → accepted
+        // Update request status → accepted
         const request = await FriendRequest.findOneAndUpdate(
             { sender: senderId, receiver: receiverId, status: 'pending' },
             { status: 'accepted' },
@@ -110,29 +115,21 @@ module.exports.acceptRequest = async (req, res) => {
         const sender = await User.findById(senderId).select("username profilePic");
         const receiver = await User.findById(receiverId).select("username profilePic");
 
-        // 🔔 Notify sender → request accepted
+        // Notify sender → request accepted
         if (sender) {
             sendNotificationToUser(sender._id, {
                 title: 'Friend Request Accepted',
-                body: `${req.user.username} accepted your friend request.`,
+                body: `${receiver.username} accepted your friend request.`,
             });
         }
 
-        // 📡 Emit socket events to both
+        // Emit socket events to both
         emitToUser(senderId, "friendRequestAccepted", {
-            friend: {
-                _id: receiver._id,
-                username: receiver.username,
-                profilePic: receiver.profilePic || "/avatar.png"
-            }
+            friend: receiver
         });
 
         emitToUser(receiverId, "friendAdded", {
-            friend: {
-                _id: sender._id,
-                username: sender.username,
-                profilePic: sender.profilePic || "/avatar.png",
-            }
+            friend: sender
         });
 
         return res.status(200).json({ success: true, message: "Friend request accepted!" });
@@ -147,10 +144,10 @@ module.exports.acceptRequest = async (req, res) => {
 // --------------------
 module.exports.rejectRequest = async (req, res) => {
     try {
-        const { id: senderId } = req.params; // Sender ID
         const receiverId = req.user._id; // Current user (rejector)
+        const { userId: senderId } = req.params; // Sender ID
 
-        // ❌ Update request status → rejected
+        // Update request status → rejected
         const request = await FriendRequest.findOneAndUpdate(
             { sender: senderId, receiver: receiverId, status: 'pending' },
             { status: 'rejected' },
@@ -161,7 +158,7 @@ module.exports.rejectRequest = async (req, res) => {
             return res.status(400).json({ success: false, error: "No pending request found." });
         }
 
-        // 🔔 Notify sender → request rejected
+        // Notify sender → request rejected
         const sender = await User.findById(senderId);
         if (sender) {
             sendNotificationToUser(sender._id, {
@@ -170,7 +167,7 @@ module.exports.rejectRequest = async (req, res) => {
             });
         }
 
-        // 📡 Emit socket event to sender
+        // Emit socket event to sender
         emitToUser(senderId, "friendRequestRejected", { userId: receiverId });
 
         return res.status(200).json({ success: true, message: "Friend request rejected!" });
@@ -186,9 +183,9 @@ module.exports.rejectRequest = async (req, res) => {
 module.exports.removeFriends = async (req, res) => {
     try {
         const userId = req.user._id; // Current user
-        const { id: friendId } = req.params; // Friend ID
+        const { userId: friendId } = req.params; // Friend ID
 
-        // ❌ Delete accepted friendship
+        // Delete accepted friendship
         const removed = await FriendRequest.findOneAndDelete({
             $or: [
                 { sender: userId, receiver: friendId },
@@ -198,10 +195,10 @@ module.exports.removeFriends = async (req, res) => {
         });
 
         if (!removed) {
-            return res.status(400).json({ success: false, error: "No friend connection found to remove." });
+            return res.status(400).json({ success: false, error: "Friend connection not found" });
         }
 
-        // 🔔 Notify removed friend
+        // Notify removed friend
         const removedUser = await User.findById(friendId);
         if (removedUser) {
             sendNotificationToUser(removedUser._id, {
@@ -210,7 +207,7 @@ module.exports.removeFriends = async (req, res) => {
             });
         }
 
-        // 📡 Emit socket event
+        // Emit socket event
         emitToUser(friendId, "friendRemoved", { userId });
 
         return res.status(200).json({ success: true, message: "Friend removed successfully!" });
@@ -227,13 +224,13 @@ module.exports.getRequests = async (req, res) => {
     try {
         const userId = req.user._id; // Current user ID
 
-        // 📨 Requests I sent
+        // Requests I sent
         const sent = await FriendRequest.find({
             sender: userId,
             status: "pending"
         }).populate("receiver", "username fullName profilePic bio");
 
-        // 📨 Requests I received
+        // Requests I received
         const received = await FriendRequest.find({
             receiver: userId,
             status: "pending"
@@ -256,18 +253,20 @@ module.exports.getFriends = async (req, res) => {
     try {
         const userId = req.user._id; // Current user
 
-        // 🔍 Find all accepted requests
+        // Find all accepted requests
         const requests = await FriendRequest.find({
             $or: [{ sender: userId }, { receiver: userId }],
             status: 'accepted'
         }).populate('sender receiver', 'username fullName bio profilePic');
 
-        // 👫 Extract actual friends (other user)
+        // Extract actual friends (other user)
         const friends = await Promise.all(
-            requests.map(async (f) => {
-                const friend = f.sender._id.equals(userId) ? f.receiver : f.sender;
+            requests.map(async (conn) => {
+                const friend = conn.sender._id.equals(userId) 
+                            ? conn.receiver 
+                            : conn.sender;
 
-                // 🔗 Find chat with friend
+                // Find chat with friend
                 const chat = await Chat.findOne({
                     participants: { $all: [userId, friend._id] }
                 }).select("_id");
@@ -301,14 +300,14 @@ module.exports.searchUser = async (req, res) => {
             return res.status(400).json({ success: false, error: "Username query is required." });
         }
 
-        // 🔍 Find user by username
+        // Find user by username
         const user = await User.findOne({ username }).select("username fullName bio profilePic");
 
         if (!user) {
             return res.status(404).json({ success: false, error: "User not found!" });
         }
 
-        // 🔎 Check request status
+        // Check request status
         const request = await FriendRequest.findOne({
             $or: [
                 { sender: currUserId, receiver: user._id },
@@ -316,12 +315,12 @@ module.exports.searchUser = async (req, res) => {
             ]
         });
 
-        let status = "none"; // Default
+        let relationshipStatus = "none"; // Default
         if (request) {
-            status = request.status === "pending" ? "pending" : "friends";
+            relationshipStatus = request.status;
         }
 
-        return res.status(200).json({ success: true, user, relationshipStatus: status });
+        return res.status(200).json({ success: true, user, relationshipStatus });
     } catch (err) {
         console.error("Search user error:", err);
         return res.status(500).json({ success: false, error: err.message });
@@ -334,9 +333,9 @@ module.exports.searchUser = async (req, res) => {
 module.exports.checkStatus = async (req, res) => {
     try {
         const userId = req.user._id; // Current user
-        const otherUserId = req.params.id; // Other user ID
+        const { userId: otherUserId } = req.params; // Other user ID
 
-        // ❌ Cannot check against self
+        // Cannot check against self
         if (userId.equals(otherUserId)) {
             return res.status(400).json({
                 success: false,
@@ -345,7 +344,7 @@ module.exports.checkStatus = async (req, res) => {
             });
         }
 
-        // 🔍 Find request between the two users
+        // Find request between the two users
         const request = await FriendRequest.findOne({
             $or: [
                 { sender: userId, receiver: otherUserId },
@@ -358,7 +357,7 @@ module.exports.checkStatus = async (req, res) => {
 
         if (request) {
             status = request.status; // pending/accepted/rejected
-            sentBy = request.sender.toString() === userId.toString() ? "me" : "them";
+            sentBy = request.sender.equals(userId) ? "me" : "them";
         }
 
         return res.status(200).json({ success: true, status, sentBy });

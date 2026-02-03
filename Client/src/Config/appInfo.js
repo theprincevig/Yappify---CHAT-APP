@@ -33,7 +33,7 @@
 
 export const appInfo = {
   name: "Yappify",
-  version: "1.0.0",
+  version: "1.1.0",
   tagline: "Let's yapp it up with Yappify!",
   description: `Yappify is a friends-only chat app built to keep conversations fun, simple, and personal.
 

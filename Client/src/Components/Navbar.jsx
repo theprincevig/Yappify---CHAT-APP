@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { UserPlus, Settings, User } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useThemeStore } from "../store/useThemeStore";
+import { useFriendStore } from "../store/useFriendStore";
 
 /**
  * ===========================
@@ -15,6 +16,7 @@ import { useThemeStore } from "../store/useThemeStore";
 export default function Navbar() {
     const { authUser } = useAuthStore();
     const { theme } = useThemeStore();
+    const { hasNewPending, setHasNewPending } = useFriendStore();
 
     return (
         <header className="fixed top-0 z-40 w-full border-b border-base-300 bg-base-100/80 backdrop-blur-lg">
@@ -28,8 +30,8 @@ export default function Navbar() {
                     <img
                         src={
                             theme === "dark"
-                                ? "/logo/Yappify-logo2.png" // 🌙 Dark Mode Logo
-                                : "/logo/Yappify-logo1.png" // ☀️ Light Mode Logo
+                                ? "/logo/Yappify-logo2.png" // Dark Mode Logo
+                                : "/logo/Yappify-logo1.png" // Light Mode Logo
                         }
                         alt="yappify"
                         className="h-15 md:h-20 w-auto"
@@ -42,15 +44,24 @@ export default function Navbar() {
                     {/* --- Authenticated User Actions --- */}
                     {authUser && (
                         <>
-                            {/* ➕ Add Friends Button */}
-                            <Link to="/addFriend" className="btn btn-sm gap-2">
+                            {/* Add Friends Button */}
+                            <Link 
+                                to="/addFriend" 
+                                className="relative btn btn-sm gap-2" 
+                                onClick={() => setHasNewPending(false)}
+                            >
+                                {hasNewPending && (
+                                    <div className="indicator absolute top-0 right-4 ">
+                                        <span className="indicator-item badge badge-secondary w-10 h-5 text-xs myfont-kaushan font-light">New</span>
+                                    </div>
+                                )}
                                 <UserPlus className="size-4" />
                                 <span className="hidden sm:inline font-medium myfont-AU-NSW tracking-wide">
                                     Add Friends
                                 </span>
                             </Link>
 
-                            {/* 👤 Profile Button */}
+                            {/* Profile Button */}
                             <Link to="/profile" className="btn btn-sm gap-2">
                                 <User className="size-4" />
                                 <span className="hidden sm:inline font-medium myfont-AU-NSW tracking-wide">
@@ -61,7 +72,7 @@ export default function Navbar() {
                     )}
 
                     {/* --- Always Visible --- */}
-                    {/* ⚙️ Settings Button */}
+                    {/* Settings Button */}
                     <Link to="/settings" className="btn btn-sm gap-2 transition-colors">
                         <Settings className="size-4" />
                         <span className="hidden sm:inline font-medium myfont-AU-NSW tracking-wide">

@@ -19,7 +19,7 @@ router.route("/me")
         wrapAsync(profileController.showOwnProfile)
     )
     // Update the logged-in user's own profile (username, bio, profilePic)
-    .put(
+    .patch(
         isLoggedIn,
         upload.single("profilePic"), // handle profile picture upload
         validateUsername,            // validate username format
@@ -29,14 +29,14 @@ router.route("/me")
 // --------------------
 // /:profileId routes (for viewing or updating other users' profiles)
 // --------------------
-router.route("/:profileId")
+router.route("/:userId")
     // View a specific user's profile by ID
     .get(
         isLoggedIn,
         wrapAsync(profileController.showProfile)
     )
     // Update a specific user's profile (only allowed if owner)
-    .put(
+    .patch(
         isLoggedIn,
         isOwner,                     // check if current user is the owner of this profile
         upload.single("profilePic"), // handle profile picture upload

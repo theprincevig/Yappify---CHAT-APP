@@ -5,25 +5,25 @@ import usePushNotifications from "../../hooks/usePushNotifications";
 import { Loader } from "lucide-react";
 
 // ========================================================================
-// 🚀 FunModeModal Component
+// FunModeModal Component
 // ========================================================================
-// 🎭 Lets the user choose between Fun Mode (chaos 🤪) or Full Control (peace ✨)
+// Lets the user choose between Fun Mode (chaos) or Full Control (peace)
 export default function FunModeModal({ onClose }) {
-    // ⏳ Track confirm button loading state
+    // Track confirm button loading state
     const [loading, setLoading] = useState(false);
-    // 🎚️ Which mode user selects ('fun' or 'control')
+    // Which mode user selects ('fun' or 'control')
     const [selectedMode, setSelectedMode] = useState("");
 
-    // 🛠 Store action for setting fun mode
-    const { setFunMode } = useAuthStore();
-    // 🔔 Push notifications hook for enabling notifications
+    // Store action for setting fun mode
+    const { updateNotifications } = useAuthStore();
+    // Push notifications hook for enabling notifications
     const { subscribe } = usePushNotifications();
 
     // ========================================================================
-    // 🖱 Handle confirm button click
+    // Handle confirm button click
     // ========================================================================
     const handleSelectMode = async () => {
-        // ⚠️ If no mode is selected, show an error toast
+        // If no mode is selected, show an error toast
         if (!selectedMode) {
             toast.error("Please select the Mode.");
             return;
@@ -31,24 +31,24 @@ export default function FunModeModal({ onClose }) {
 
         setLoading(true); // Start loading animation
         try {
-            await setFunMode(selectedMode); // ✅ Update the selected mode in the store
+            await updateNotifications(selectedMode); // Update the selected mode in the store
 
-            // 🔔 Enable push notifications if Full Control mode is chosen
+            // Enable push notifications if Full Control mode is chosen
             if (selectedMode === "control") {
                 await subscribe();
             }
 
-            toast.success(`Mode set to "${selectedMode}" successfully!`); // 🎉 Show success toast
-            onClose(); // 🚪 Close the modal after successful mode setting
+            toast.success(`Mode set to "${selectedMode}" successfully!`); // Show success toast
+            onClose(); // Close the modal after successful mode setting
         } catch (error) {
-            toast.error(error.response?.data?.error || "Failed to set mode"); // ❌ Show error toast if mode setting fails
+            toast.error(error.response?.data?.error || "Failed to set mode"); // Show error toast if mode setting fails
         } finally {
             setLoading(false); // Stop loading animation
         }
     };
 
     // ========================================================================
-    // 🎨 Render the modal UI
+    // Render the modal UI
     // ========================================================================
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-2">
@@ -64,7 +64,7 @@ export default function FunModeModal({ onClose }) {
                 {/* 🎛 Mode Selection */}
                 <div className="space-y-2">
                     <div className="flex flex-col gap-3">
-                        {/* 🎉 Fun Mode */}
+                        {/* Fun Mode */}
                         <label
                             onClick={() => setSelectedMode("fun")}
                             className={`flex flex-col gap-2 p-4 rounded-lg cursor-pointer transition 
@@ -89,7 +89,7 @@ export default function FunModeModal({ onClose }) {
                             </div>
                         </label>
 
-                        {/* 🛡 Full Control Mode */}
+                        {/* Full Control Mode */}
                         <label
                             onClick={() => setSelectedMode("control")}
                             className={`
@@ -118,7 +118,7 @@ export default function FunModeModal({ onClose }) {
                     </div>
                 </div>
 
-                {/* ✅ Confirm Button */}
+                {/* Confirm Button */}
                 <button
                     onClick={handleSelectMode}
                     disabled={loading}

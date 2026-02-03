@@ -1,66 +1,76 @@
-const express = require("express");               // Import Express
-const router = express.Router();                  // Create a new router instance
-const { isLoggedIn } = require("../middleware/auth.js");  // Auth middleware to check if user is logged in
-const friendController = require("../controller/friend.js"); // Controller for friend-related actions
-const wrapAsync = require("../middleware/wrapAsync.js");   // Helper to catch async errors
+const express = require("express");
+const router = express.Router();
 
-// --------------------
-// Friend Routes
-// --------------------
+const { isLoggedIn } = require("../middleware/auth.js");
+const friendController = require("../controller/friend.js");
+const wrapAsync = require("../middleware/wrapAsync.js");
 
-// Send a friend request to user with given ID
-router.post("/request/:id",
-    isLoggedIn,                                 // Ensure user is authenticated
-    wrapAsync(friendController.sendRequest)     // Controller handles sending request
+/* ======================
+   FRIEND REQUESTS
+====================== */
+
+// Get friend request
+router.get("/requests", isLoggedIn, wrapAsync(friendController.getRequests));
+
+// Send or Cancel sent request
+router.route("/requests/:userId")
+      .post(
+        isLoggedIn,
+        wrapAsync(friendController.sendRequest)
+      )
+      .delete(
+        isLoggedIn,
+        wrapAsync(friendController.cancelRequest)
+      );
+
+// Accept received request
+router.patch(
+  "/requests/:userId/accept",
+  isLoggedIn,
+  wrapAsync(friendController.acceptRequest)
 );
 
-// Cancel a sent friend request to user with given ID
-router.post("/cancel/:id",
-    isLoggedIn,
-    wrapAsync(friendController.cancelRequest)
+// Reject received request
+router.delete(
+  "/requests/:userId/reject",
+  isLoggedIn,
+  wrapAsync(friendController.rejectRequest)
 );
 
-// Accept a received friend request from user with given ID
-router.post("/accept/:id",
-    isLoggedIn,
-    wrapAsync(friendController.acceptRequest)
+/* ======================
+   FRIENDS
+====================== */
+
+// List friends
+router.get(
+  "/",
+  isLoggedIn,
+  wrapAsync(friendController.getFriends)
 );
 
-// Reject a received friend request from user with given ID
-router.post("/reject/:id",
-    isLoggedIn,
-    wrapAsync(friendController.rejectRequest)
+// Remove friend
+router.delete(
+  "/:userId",
+  isLoggedIn,
+  wrapAsync(friendController.removeFriends)
 );
 
-// Remove an existing friend by user ID
-router.post("/remove/:id",
-    isLoggedIn,
-    wrapAsync(friendController.removeFriends)
+/* ======================
+   UTILITIES
+====================== */
+
+// Relationship status
+router.get(
+  "/status/:userId",
+  isLoggedIn,
+  wrapAsync(friendController.checkStatus)
 );
 
-// View all pending requests (both sent and received)
-router.get("/pending-requests", 
-    isLoggedIn, 
-    wrapAsync(friendController.getRequests)
+// Search users
+router.get(
+  "/search",
+  isLoggedIn,
+  wrapAsync(friendController.searchUser)
 );
 
-// View all friends or requests
-router.get("/list", 
-    isLoggedIn, 
-    wrapAsync(friendController.getFriends)
-);
-
-// Check relationship status with a user by ID
-router.get("/status/:id", 
-    isLoggedIn, 
-    wrapAsync(friendController.checkStatus)
-);
-
-// Search users by username
-router.get("/search", 
-    isLoggedIn, 
-    wrapAsync(friendController.searchUser)
-);
-
-// Export the router to use in main app
 module.exports = router;

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuthStore } from "../../store/useAuthStore";
 import ViewOwnProfile from "./ViewOwnProfile";
 import EditProfile from "./EditProfile";
+import ProfileLoader from "../../Components/LoaderEffects/ProfileLoader";
 
 /**
  * Profile Page Component
@@ -19,18 +20,24 @@ export default function Profile() {
     return (
         <div className="h-screen pt-20">
             <div className="max-w-2xl mx-auto p-4 py-8">
-                <div className="bg-base-300 rounded-xl p-6 space-y-8">
-                    {/* Render Edit or View Profile based on isEditing */}
-                    {isEditing ? (
-                        <EditProfile 
-                            authUser={authUser} 
-                            setIsEditing={setIsEditing} 
-                        />
+                <div className="bg-base-300 rounded-xl p-6 space-y-8 shadow-md">
+                    {!authUser ? (
+                        <ProfileLoader />
                     ) : (
-                        <ViewOwnProfile 
-                            authUser={authUser} 
-                            setIsEditing={setIsEditing} 
-                        />
+                        <>
+                            {/* Render Edit or View Profile based on isEditing */}
+                            {isEditing ? (
+                                <EditProfile 
+                                    authUser={authUser} 
+                                    setIsEditing={setIsEditing} 
+                                />
+                            ) : (
+                                <ViewOwnProfile 
+                                    authUser={authUser} 
+                                    setIsEditing={setIsEditing} 
+                                />
+                            )}
+                        </>
                     )}
                 </div>
             </div>

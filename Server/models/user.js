@@ -9,6 +9,9 @@ const userSchema = new Schema({
     email: {
         type: String,                             // User's email
         required: true,                           // Email is mandatory for registration
+        lowercase: true,                         // Store email in lowercase
+        unique: true,                            // Ensure email uniqueness
+        trim: true                               // Remove whitespace
     },
     profilePic: {
         type: String,                             // URL of profile picture
@@ -41,7 +44,21 @@ const userSchema = new Schema({
     notificationsEnabled: {
         type: Boolean,                            // Whether user allows notifications
         default: true                             // Default true (only relevant for "control" mode)
-    }
+    },
+    // Email verification
+    isVerified: {
+        type: Boolean,
+        default: false
+    },
+    verificationToken: String,               // Hashed token for email verification
+    verificationExpiresAt: Date,               // Expiry time for verification token
+    lastVerificationSentAt: {                // Tracks last time verification email was sent
+        type: Date,
+        default: null
+    },
+    // Password reset
+    resetPasswordToken: String,                  // Hashed token for password reset
+    resetPasswordExpiresAt: Date,                    // Expiry time for reset token
 }, { timestamps: true });                         // Auto-create createdAt and updatedAt fields
 
 // --------------------

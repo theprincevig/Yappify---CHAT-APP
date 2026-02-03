@@ -5,55 +5,54 @@ import { Loader2, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
 
-export default function PendingRequestsModal({ isOpen, onClose }) {
+export default function PendingRequestsModal({ pendingRequests, isOpen, onClose }) {
     // Accessing friend-related state and actions from our custom store
     const {
-        pendingRequests,
         isLoadingPending,
-        getPendingRequests,
+        getRequests,
         acceptRequest,
         rejectRequest,
         cancelRequest
     } = useFriendStore();
     const { theme } = useThemeStore();
 
-    // 🔄 Fetch pending requests when the modal is opened
+    // Fetch pending requests when the modal is opened
     useEffect(() => {
         if (isOpen) {
-            getPendingRequests();
+            getRequests();
         }
-    }, [isOpen, getPendingRequests]);
+    }, [isOpen, getRequests]);
 
-    // 🚀 Handle actions (accept, reject, cancel) for friend requests
+    // Handle actions (accept, reject, cancel) for friend requests
     async function handleRequests(id, action) {
         try {
             switch (action) {
                 case "accept":
                     await acceptRequest(id);
-                    toast.success("Friend request accepted!"); // ✅ Hooray!
+                    toast.success("Friend request accepted!"); // Hooray!
                     break;
                 case "reject":
                     await rejectRequest(id);
-                    toast.success("Friend request rejected!"); // ❌ Ouch!
+                    toast.success("Friend request rejected!"); // Ouch!
                     break;
                 case "cancel":
                     await cancelRequest(id);
-                    toast.success("Friend request canceled!"); // 🛑 Request gone!
+                    toast.success("Friend request canceled!"); // Request gone!
                     break;
                 default:
                     console.warn("Unknown action:", action);
                     return;
             }
-            await getPendingRequests(); // 🔄 Refresh the list after the action
+            await getRequests(); // Refresh the list after the action
         } catch (error) {
-            // ⚠️ Display an error message if something goes wrong
+            // Display an error message if something goes wrong
             toast.error(
                 error.response?.data?.error || "Failed to process request"
             );
         }
     }
 
-    // 🚪 If the modal is closed, don't render anything
+    // If the modal is closed, don't render anything
     if (!isOpen) return null;
 
     return (
@@ -82,14 +81,14 @@ export default function PendingRequestsModal({ isOpen, onClose }) {
 
                 {/* Conditional Content: Loading state or the actual content */}
                 {isLoadingPending ? (
-                    // ⏳ Loading state display
+                    // Loading state display
                     <div className="flex justify-center py-8">
                         <Loader2 size={32} className="animate-spin text-primary" />
                     </div>
                 ) : (
                     // Content: Received and Sent Requests
                     <div className="space-y-8">
-                        {/* 📥 Received Requests Section */}
+                        {/* Received Requests Section */}
                         <div>
                             <h3 className="font-semibold mb-3 font-[Comfortaa]">
                                 Received
@@ -113,7 +112,7 @@ export default function PendingRequestsModal({ isOpen, onClose }) {
                                                     className="size-10 rounded-box"
                                                 />
                                                 <div>
-                                                    <Link to={`/chat/profile/${req.sender._id}`} className="text-base sm:text-lg">
+                                                    <Link to={`/users/${req.sender._id}`} className="text-base sm:text-lg">
                                                         @{req.sender.username}
                                                     </Link>
                                                     <p className="text-xs ml-2 uppercase font-semibold opacity-60">
@@ -167,7 +166,7 @@ export default function PendingRequestsModal({ isOpen, onClose }) {
                         {/* Visual divider */}
                         <div className="divider"></div>
 
-                        {/* 📤 Sent Requests Section */}
+                        {/* Sent Requests Section */}
                         <div>
                             <h3 className="font-semibold mb-3 font-[Comfortaa]">
                                 Sent
@@ -191,7 +190,7 @@ export default function PendingRequestsModal({ isOpen, onClose }) {
                                                     className="size-10 rounded-box"
                                                 />
                                                 <div>
-                                                    <Link to={`/chat/profile/${req.receiver._id}`} className="text-base sm:text-lg">
+                                                    <Link to={`/users/${req.receiver._id}`} className="text-base sm:text-lg">
                                                         @{req.receiver.username}
                                                     </Link>
                                                     <p className="text-xs ml-2 uppercase font-semibold opacity-60">

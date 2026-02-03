@@ -4,6 +4,7 @@
 const { Server } = require("socket.io"); // Socket.IO server
 const http = require("http");            // HTTP server
 const express = require("express");      // Express framework
+const { session, sessionOptions } = require("./session.js");    // sessions middleware function
 
 // --------------------
 // Express & HTTP setup
@@ -31,6 +32,9 @@ const io = new Server(server, {
         credentials: true, // Allow cookies & credentials
     },
 });
+
+// Attach session middleware to Socket.IO
+io.engine.use(session(sessionOptions));
 
 // --------------------
 // Helper functions

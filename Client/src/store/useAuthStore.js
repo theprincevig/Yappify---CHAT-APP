@@ -1,263 +1,432 @@
-import { create } from 'zustand';
-import { axiosInstance } from '../lib/axios';
-import { getSocket } from '../lib/socket';
+import { create } from "zustand";
+import { axiosInstance } from "../lib/axios";
+import { getSocket } from "../lib/socket";
+import { API_PATHS } from "../utils/apiPaths";
 
 /**
  * =========================
  *   AUTH STORE (ZUSTAND)
  * =========================
- * Handles authentication, user profile, sockets, notifications, and fun mode logic.
+ * Handles authentication, user profile, sockets, notifications,
+ * fun mode logic, email verification, and password reset.
  */
 
 export const useAuthStore = create((set, get) => ({
+  // =========================
+  //   STATE VARIABLES
+  // =========================
+  authUser: null, // Current authenticated user
+  onlineUsers: [], // List of online users
+  connectedSocket: null, // Socket connection instance
+  showFunModePopup: false, // Show fun mode popup
 
-    // =========================
-    //   STATE VARIABLES
-    // =========================
-    authUser: null,                // Current authenticated user
-    isSigningUp: false,            // Signup loading state
-    isLoggingIn: false,            // Login loading state
-    isUpdatingProfile: false,      // Profile update loading state
-    isCheckingAuth: true,          // Auth check loading state
-    showFunModePopup: false,       // Show fun mode popup
-    onlineUsers: [],               // List of online users
-    connectedSocket: null,         // Socket connection instance
+  isCheckingAuth: true, // Auth check loading state
+  isSigningUp: false, // Signup loading state
+  isLoggingIn: false, // Login loading state
+  isLoadingProfile: false,  // Profile loading state
+  isUpdatingProfile: false, // Profile update loading state
+  isVerifying: false, // Email verification loading state
+  isSendingResetPassEmail: false, // Forgot password loading state
+  isResettingPassword: false, // Password reset loading state
 
-    // =========================
-    //   AUTH CHECK
-    // =========================
-    checkAuth: async () => {
-        set({ isCheckingAuth: true });
-        try {
-            const res = await axiosInstance.get("/api/auth/checkAuth");
-            if (res.data) {
-                set({ authUser: res.data });
-                get().connectSocket(res.data);
+  /// =========================
+  //  FunMode Popup
+  // =========================
+  setFunModePopup: (value) => set({ showFunModePopup: value }),
 
-                // Show fun mode popup if not locked
-                if (!res.data.funModeLocked) {
-                    set({ showFunModePopup: true });
-                } else {
-                    set({ showFunModePopup: false });
-                }
-            } else {
-                set({ authUser: null, showFunModePopup: false });
-            }
-        } catch (error) {
-            console.error(`Error in checkAuth : ${error}`);
-            set({ authUser: null, showFunModePopup: false });
-        } finally {
-            set({ isCheckingAuth: false });
-        }
-    },
+  // =========================
+  //   AUTH CHECK
+  // =========================
+  session: async () => {
+    set({ isCheckingAuth: true });
+    try {
+      const res = await axiosInstance.get(API_PATHS.AUTH.SESSION);
+      const user = res.data.user;
 
-    // =========================
-    //   SIGNUP
-    // =========================
-    signup: async (data) => {
-        set({ isSigningUp: true });
-        try {
-            const res = await axiosInstance.post("/api/auth/signup", data);
-            set({ authUser: res.data });            
-            get().connectSocket(res.data);
+      if (user) {
+        set({ authUser: user });
 
-            set({ showFunModePopup: true });
-        } catch (error) {
-            console.error(`Signup error: ${error}`);
-            throw error;
-        } finally {
-            set({ isSigningUp: false });
-        }
-    },
+        // Connect socket only if verified
+        if (user.isVerified) get().connectSocket(user);
 
-    // =========================
-    //   LOGIN
-    // =========================
-    login: async (data) => {
-        set({ isLoggingIn: true });
-        try {
-            const res = await axiosInstance.post("/api/auth/login", data);
+        // Show fun mode popup if verified and not locked
+        const showFunMode =
+          user.isVerified && !user.funModeLocked && !user.funMode;
+        set({ showFunModePopup: showFunMode });
+      } else {
+        set({ authUser: null, showFunModePopup: false });
+      }
+    } catch (error) {
+      console.error(`Error in check auth session : ${error}`);
+      set({ authUser: null, showFunModePopup: false });
+    } finally {
+      set({ isCheckingAuth: false });
+    }
+  },
 
-            set({ authUser: res.data.user });
-            get().connectSocket(res.data.user);
+  // =========================
+  //   SIGNUP
+  // =========================
+  signup: async (data) => {
+    set({ isSigningUp: true });
+    try {
+      const res = await axiosInstance.post(API_PATHS.AUTH.SIGNUP, data);
+      const user = res.data.user;
 
-            // Show fun mode popup if not locked
-            if (res.data && !res.data.user.funModeLocked) {
-                set({ showFunModePopup: true });
-            } else {
-                set({ showFunModePopup: false });
-            }
-        } catch (error) {
-            console.error(`Login error: ${error}`);
-            throw error;
-        } finally {
-            set({ isLoggingIn: false });
-        }
-    },
+      set({ authUser: user });
+      if (user.isVerified) {
+        setTimeout(() => get().connectSocket(user), 300);
+      }
+    } catch (error) {
+      console.error(`Signup error: ${error}`);
+      throw error;
+    } finally {
+      set({ isSigningUp: false });
+    }
+  },
 
-    // =========================
-    //   LOGOUT
-    // =========================
-    logout: async () => {
-        try {
-            await axiosInstance.post("/api/auth/logout");
-            set({ authUser: null });
-            get().disconnectSocket();
-        } catch (error) {
-            console.log("Logout error:", error);
-            throw error;
-        }
-    },
+  // =========================
+  //   VERIFY EMAIL
+  // =========================
+  verifyEmail: async (username, code) => {
+    set({ isVerifying: true });
+    try {
+      const res = await axiosInstance.post(API_PATHS.AUTH.EMAIL_VERIFY, {
+        username,
+        code,
+      });
 
-    // =========================
-    //   FUN MODE
-    // =========================
-    setFunMode: async (mode) => {
-        try {
-            const res = await axiosInstance.post("/api/auth/set-fun-mode", { funMode: mode });
-            set((state) => ({
-                authUser: { ...state.authUser, funMode: res.data.funMode, funModeLocked: true },
-                showFunModePopup: false,
-            }));
-        } catch (error) {
-            console.error(`Error setting Fun Mode: ${error}`);
-        }
-    },
+      if (res.data?.success) {
+        // Update the verified user in store
+        set((state) => {
+          const updatedUser = { ...state.authUser, isVerified: true };
 
-    // =========================
-    //   PUSH SUBSCRIPTION
-    // =========================
-    sendSubscriptionToServer: async (subscription) => {
-        try {
-            if (!subscription) return;
+          // Connect socket after verification if not already connected
+          if (!get().connectedSocket) get().connectSocket(updatedUser);
 
-            const res = await axiosInstance.post("/api/auth/save-subscription", 
-                { subscription },
-                { withCredentials: true },
-            )
+          // Show fun mode popup if not locked
+          const showFunMode =
+            !updatedUser.funModeLocked && !updatedUser.funMode;
 
-            console.log("✅ Subscription saved:", res.data);
-            return res.data;
-        } catch (error) {
-            console.error("❌ Error sending subscription:", error);
-        }
-    },
-
-    // =========================
-    //   NOTIFICATIONS TOGGLE
-    // =========================
-    toggleNotifications: async (enabled) => {
-        try {
-            const res = await axiosInstance.post("/api/auth/toggle-notifications", { enabled });
-            set((state) => ({
-                authUser: { ...state.authUser, notificationsEnabled: res.data.notificationsEnabled },
-            }));
-        } catch (error) {
-            console.error(`Error toggling notifications: ${error}`);
-        }
-    },
-
-    // =========================
-    //   VIEW PROFILE
-    // =========================
-    viewProfile: async (profileId) => {
-        try {
-            const res = await axiosInstance.get(`/chat/profile/${profileId}`);
-            if (res.data?.success) {
-                return res.data.user; // Return the user object
-            } else {
-                console.error("Failed to fetch user profile:", res.data?.error);
-                return null;
-            }
-        } catch (error) {
-            console.error("Error fetching user profile:", error);
-            return null;
-        }
-    },
-
-    // =========================
-    //   UPDATE PROFILE
-    // =========================
-    updateProfile: async (data) => {
-        set({ isUpdatingProfile: true });
-        try {
-            const formData = new FormData();
-            if (data.fullName) formData.append("fullName", data.fullName);
-            if (data.username) formData.append("username", data.username);
-            if (data.bio) formData.append("bio", data.bio);
-            if (data.profilePic) formData.append("profilePic", data.profilePic);
-
-            const res = await axiosInstance.put(`/chat/profile/me`, formData, {
-                headers: { "Content-Type": "multipart/form-data" },
-            });
-
-            if (res.data?.user) {
-                set({ authUser: res.data.user });
-                return res.data.user;
-            } else {
-                console.error("No user object returned from server");
-                return null;
-            }
-        } catch (error) {
-            console.error(`Error updating profile: ${error}`);
-            throw error;
-        } finally {
-            set({ isUpdatingProfile: false });
-        }
-    },
-
-    // =========================
-    //   SOCKET CONNECTION
-    // =========================
-    connectSocket: (user) => {
-        console.log("📥 connectSocket called with:", user);
-        
-        const authUser = user || get().authUser;
-        if (!authUser?._id) {
-            console.warn("⚠️ No authUser found when trying to connect socket");
-            return;
-        }
-
-        const { connectedSocket } = get();
-
-        // Disconnect old socket if exists
-        if (connectedSocket) {
-            connectedSocket.off();
-            connectedSocket.disconnect();
-        }
-
-        // Create new socket for user
-        console.log("🟢 Creating socket for user:", authUser._id);
-        const socket = getSocket(authUser._id);
-
-        // Trigger connection
-        socket.connect();
-
-        // Log auth payload
-        console.log("📤 Socket auth payload:", socket.auth);
-
-        set({ connectedSocket: socket });
-
-        // Listen for socket events
-        socket.on("connect", () => {
-            console.log("🔌 [FRONTEND CONNECTED] socket.id:", socket.id);
+          return { authUser: updatedUser, showFunModePopup: showFunMode };
         });
-
-        socket.on("getOnlineUsers", (userIds) => {
-            console.log("👥 [FRONTEND RECEIVED onlineUsers]", userIds);
-            set({ onlineUsers: userIds });
-        });
-    },
-
-    // =========================
-    //   SOCKET DISCONNECT
-    // =========================
-    disconnectSocket: () => {
-        const { connectedSocket } = get();
-        if (connectedSocket) {
-            connectedSocket.off();
-            connectedSocket.disconnect();
-            set({ connectedSocket: null, onlineUsers: [] });
+      }
+      return res.data;
+    } catch (error) {
+      console.error("Error verifying email:", error);
+      throw (
+        error.response?.data || {
+          success: false,
+          message: "Something went wrong.",
         }
-    },
+      );
+    } finally {
+      set({ isVerifying: false });
+    }
+  },
+
+  // =========================
+  //   RESEND VERIFY EMAIL
+  // =========================
+  resendVerificationEmail: async (username, email) => {
+    try {
+      const res = await axiosInstance.post(API_PATHS.AUTH.EMAIL_RESEND, {
+        username,
+        email,
+      });
+      return res.data;
+    } catch (error) {
+      console.error("Resend verification failed:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // =========================
+  //   LOGIN
+  // =========================
+  login: async (data) => {
+    set({ isLoggingIn: true });
+    try {
+      const res = await axiosInstance.post(API_PATHS.AUTH.SESSION, data);
+      const user = res.data.user;
+
+      set({ authUser: user });
+      if (user.isVerified) {
+        setTimeout(() => get().connectSocket(user), 300);
+      }
+
+      const showFunMode =
+        user.isVerified && !user.funModeLocked && !user.funMode;
+      set({ showFunModePopup: showFunMode });
+    } catch (error) {
+      console.error(`Login error: ${error}`);
+      throw error;
+    } finally {
+      set({ isLoggingIn: false });
+    }
+  },
+
+  // =========================
+  //   LOGOUT
+  // =========================
+  logout: async () => {
+    try {
+      await axiosInstance.delete(API_PATHS.AUTH.SESSION);
+      set({ authUser: null });
+      get().disconnectSocket();
+    } catch (error) {
+      console.log("Logout error:", error);
+      throw error;
+    }
+  },
+
+  // =========================
+  //   FUN MODE
+  // =========================
+  updateNotifications: async (mode) => {
+    try {
+      const res = await axiosInstance.patch(API_PATHS.AUTH.UPDATE_MODE, {
+        funMode: mode,
+      });
+      set((state) => ({
+        authUser: {
+          ...state.authUser,
+          funMode: res.data.funMode,
+          funModeLocked: true,
+        },
+        showFunModePopup: false,
+      }));
+    } catch (error) {
+      console.error(`Error setting Fun Mode: ${error}`);
+      throw error;
+    }
+  },
+
+  // =========================
+  //   PUSH SUBSCRIPTION
+  // =========================
+  saveSubscription: async (subscription) => {
+    try {
+      if (!subscription) return;
+
+      const res = await axiosInstance.post(
+        API_PATHS.AUTH.SAVE_SUBSCRIPTION,
+        { subscription },
+        { withCredentials: true }
+      );
+
+      console.log("Subscription saved:", res.data);
+      return res.data;
+    } catch (error) {
+      console.error("Error sending subscription:", error);
+      throw error;
+    }
+  },
+
+  // =========================
+  //   NOTIFICATIONS TOGGLE
+  // =========================
+  toggleNotifications: async (enabled) => {
+    try {
+      const res = await axiosInstance.patch(API_PATHS.AUTH.TOGGLE_NOTIFICATIONS, {
+        enabled,
+      });
+      set((state) => ({
+        authUser: {
+          ...state.authUser,
+          notificationsEnabled: res.data.notificationsEnabled,
+        },
+      }));
+    } catch (error) {
+      console.error(`Error toggling notifications: ${error}`);
+      throw error;
+    }
+  },
+
+  // =========================
+  //   VIEW PROFILE
+  // =========================
+  viewProfile: async (userId) => {
+    set({ isLoadingProfile: true });
+
+    if (!userId) {
+      console.warn("viewProfile called with invalid userId:", userId);
+      return null;
+    }
+
+    try {
+      const res = await axiosInstance.get(API_PATHS.USERS.GET_PROFILE(userId));
+      if (res.data?.success) {
+        return res.data.user; // Return the user object
+      } else {
+        console.error("Failed to fetch user profile:", res.data?.error);
+        return null;
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      return null;
+    } finally {
+      set({ isLoadingProfile: false });
+    }
+  },
+
+  // =========================
+  //   UPDATE PROFILE
+  // =========================
+  updateProfile: async (data) => {
+    set({ isUpdatingProfile: true });
+    try {
+      const formData = new FormData();
+      if (data.fullName) formData.append("fullName", data.fullName);
+      if (data.username) formData.append("username", data.username);
+      if (data.bio) formData.append("bio", data.bio);
+      if (data.profilePic) formData.append("profilePic", data.profilePic);
+
+      const res = await axiosInstance.patch(API_PATHS.USERS.UPDATE_ME, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (res.data?.user) {
+        set({ authUser: res.data.user });
+        return res.data.user;
+      } else {
+        console.error("No user object returned from server");
+        return null;
+      }
+    } catch (error) {
+      console.error(`Error updating profile: ${error}`);
+      throw error;
+    } finally {
+      set({ isUpdatingProfile: false });
+    }
+  },
+
+  // =========================
+  //   CHANGE PASSWORD
+  // =========================
+  changePassword: async (oldPassword, newPassword) => {
+    set({ isResettingPassword: true });
+    try {
+      const res = await axiosInstance.patch(API_PATHS.AUTH.CHANGE_PASSWORD, {
+        oldPassword,
+        newPassword
+      });
+      return res.data;
+    } catch (error) {
+      console.error("Error changing password:", error);
+      throw (
+        error.response?.data || {
+          success: false,
+          message: "Unable to change password.",
+        }
+      );
+    } finally {
+      set({ isResettingPassword: false });
+    }
+  },
+
+  // =========================
+  //   FORGOT PASSWORD
+  // =========================
+  forgotPassword: async (email) => {
+    set({ isSendingResetPassEmail: true });
+    try {
+      const res = await axiosInstance.post(API_PATHS.AUTH.FORGOT_PASSWORD, {
+        email,
+      });
+      return res.data;
+    } catch (error) {
+      console.error("Error in forgot password:", error);
+      throw (
+        error.response?.data || {
+          success: false,
+          message: "Unable to send reset email.",
+        }
+      );
+    } finally {
+      set({ isSendingResetPassEmail: false });
+    }
+  },
+
+  // =========================
+  //   RESET PASSWORD
+  // =========================
+  resetPassword: async (token, newPassword) => {
+    set({ isResettingPassword: true });
+    try {
+      const res = await axiosInstance.post(
+        API_PATHS.AUTH.RESET_PASSWORD(token),
+        { newPassword }
+      );
+      return res.data; // { success, message }
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      throw (
+        error.response?.data || {
+          success: false,
+          message: "Unable to reset password.",
+        }
+      );
+    } finally {
+      set({ isResettingPassword: false });
+    }
+  },
+
+  // =========================
+  //   SOCKET CONNECTION
+  // =========================
+  connectSocket: (user) => {
+    console.log("connectSocket called with:", user);
+
+    const authUser = user || get().authUser;
+    if (!authUser?._id || !authUser?.isVerified) {
+      console.warn(
+        "No Verified authUser found when trying to connect socket"
+      );
+      return;
+    }
+
+    const { connectedSocket } = get();
+
+    // Disconnect old socket if exists
+    if (connectedSocket) {
+      connectedSocket.off();
+      connectedSocket.disconnect();
+      console.log("Disconnected old socket before reconnecting");
+    }
+
+    // Create new socket for user
+    console.log("Creating socket for user:", authUser._id);
+    const socket = getSocket(authUser._id);
+
+    // Trigger connection
+    socket.connect();
+
+    // Log auth payload
+    console.log("Socket auth payload:", socket.auth);
+    
+    // Listen for socket events
+    socket.on("connect", () => {
+      console.log("[FRONTEND CONNECTED] socket.id:", socket.id);
+    });
+    
+    socket.on("getOnlineUsers", (userIds) => {
+      console.log("[FRONTEND RECEIVED onlineUsers]", userIds);
+      set({ onlineUsers: userIds });
+    });
+
+    set({ connectedSocket: socket });
+  },
+
+  // =========================
+  //   SOCKET DISCONNECT
+  // =========================
+  disconnectSocket: () => {
+    const { connectedSocket } = get();
+    if (connectedSocket) {
+      connectedSocket.off();
+      connectedSocket.disconnect();
+      set({ connectedSocket: null, onlineUsers: [] });
+    }
+  },
 }));

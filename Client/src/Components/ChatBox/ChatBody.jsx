@@ -1,10 +1,10 @@
 // ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-// ┃ 📦 Imports: React, Stores, Utils, Icons, Components                      ┃
+// ┃ Imports: React, Stores, Utils, Icons, Components                          ┃
 // ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 import { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useMessageStore } from "../../store/useMessageStore";
-import { formateMessageTime } from "../../lib/utils";
+import { formateMessageTime } from "../../lib/helper.js";
 import { Reply } from "lucide-react";
 import MessageActionModal from "../PopupModals/MessageActionModal";
 import MessageReactions from "../Messages/MessageReactions";
@@ -13,31 +13,31 @@ import ScrollToBottomButton from "../Messages/ScrollToBottomButton";
 import ForwardModal from "../PopupModals/ForwardModal";
 
 // ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-// ┃ 💬 ChatBody: Main Chat Message List Component                            ┃
+// ┃ ChatBody: Main Chat Message List Component                                ┃
 // ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 export default function ChatBody({ messages, selectedUser, currentChatId }) {
     // ────────────────────────────────────────────────────────────────────────
-    // 🔑 Auth & Message Store Hooks
+    // Auth & Message Store Hooks
     // ────────────────────────────────────────────────────────────────────────
     const { authUser } = useAuthStore();
-    const { typingUser, markMessagesAsRead, setReplyingTo } = useMessageStore();
+    const { typingUser, readStatus, setReplyingTo } = useMessageStore();
 
     // ────────────────────────────────────────────────────────────────────────
-    // 📌 Refs: For Scrolling & Long-Press Detection
+    // Refs: For Scrolling & Long-Press Detection
     // ────────────────────────────────────────────────────────────────────────
     const bottomRef = useRef(null);
     const containerRef = useRef(null);
     const pressTimerRef = useRef(null);
 
     // ────────────────────────────────────────────────────────────────────────
-    // ⚡ Local State: UI Controls
+    // Local State: UI Controls
     // ────────────────────────────────────────────────────────────────────────
     const [showScrollButton, setShowScrollButton] = useState(false); // Show "scroll to bottom" button
     const [forwardingMessageId, setForwardingMessageId] = useState(null); // Forward modal control
     const [selectedMessageId, setSelectedMessageId] = useState(null); // Message action menu control
 
     // ────────────────────────────────────────────────────────────────────────
-    // 🖱️ Close Action Modal When Clicking Outside Message Bubble
+    // Close Action Modal When Clicking Outside Message Bubble
     // ────────────────────────────────────────────────────────────────────────
     useEffect(() => {
         function handleClickOutside(e) {
@@ -50,7 +50,7 @@ export default function ChatBody({ messages, selectedUser, currentChatId }) {
     }, []);
 
     // ────────────────────────────────────────────────────────────────────────
-    // ⏬ Auto-Scroll To Bottom On New Message Or Typing (Unless Scrolled Up)
+    // Auto-Scroll To Bottom On New Message Or Typing (Unless Scrolled Up)
     // ────────────────────────────────────────────────────────────────────────
     useEffect(() => {
         if (!showScrollButton) {
@@ -59,7 +59,7 @@ export default function ChatBody({ messages, selectedUser, currentChatId }) {
     }, [messages.length, typingUser]);
 
     // ────────────────────────────────────────────────────────────────────────
-    // ✅ Mark Incoming Messages As "Read"
+    // Mark Incoming Messages As "Read"
     // ────────────────────────────────────────────────────────────────────────
     useEffect(() => {
         if (!messages.length || !currentChatId) return;
@@ -73,12 +73,12 @@ export default function ChatBody({ messages, selectedUser, currentChatId }) {
         });
 
         if (unreadFromOther.length > 0) {
-            markMessagesAsRead(currentChatId);
+            readStatus(currentChatId);
         }
     }, [messages, currentChatId, authUser._id, markMessagesAsRead]);
 
     // ────────────────────────────────────────────────────────────────────────
-    // 🖱️ Scroll Handler: Show Floating Button When Away From Bottom
+    // Scroll Handler: Show Floating Button When Away From Bottom
     // ────────────────────────────────────────────────────────────────────────
     function handleScroll() {
         if (!containerRef.current) return;
@@ -87,7 +87,7 @@ export default function ChatBody({ messages, selectedUser, currentChatId }) {
     }
 
     // ────────────────────────────────────────────────────────────────────────
-    // ⏬ Force Scroll To Bottom
+    // Force Scroll To Bottom
     // ────────────────────────────────────────────────────────────────────────
     function scrollToBottom() {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -95,7 +95,7 @@ export default function ChatBody({ messages, selectedUser, currentChatId }) {
     }
 
     // ────────────────────────────────────────────────────────────────────────
-    // 📱 Long-Press Handling (Mobile): Open Message Menu
+    // Long-Press Handling (Mobile): Open Message Menu
     // ────────────────────────────────────────────────────────────────────────
     function handleTouchStart(msgId) {
         pressTimerRef.current = setTimeout(() => {
@@ -107,14 +107,14 @@ export default function ChatBody({ messages, selectedUser, currentChatId }) {
     }
 
     // ────────────────────────────────────────────────────────────────────────
-    // 🖱️ Desktop Right-Click Or Mobile Hold: Open Message Menu
+    // Desktop Right-Click Or Mobile Hold: Open Message Menu
     // ────────────────────────────────────────────────────────────────────────
     function openMessageMenu(msgId) {
         setSelectedMessageId(msgId);
     }
 
     // ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-    // ┃ 🖼️ Render: Chat Messages, Typing, Modals, Scroll Button              ┃
+    // ┃ Render: Chat Messages, Typing, Modals, Scroll Button                  ┃
     // ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
     return (
         <div 
@@ -122,7 +122,7 @@ export default function ChatBody({ messages, selectedUser, currentChatId }) {
             onScroll={handleScroll}
             className="flex-1 overflow-y-auto p-4 space-y-3 relative"
         >
-            {/* ──────────────── 💬 Chat Messages List ──────────────── */}
+            {/* ──────────────── Chat Messages List ──────────────── */}
             {messages.map((msg, index) => {
                 const isOwnMessage = msg.sender._id === authUser._id;
                 const isLastMessage = index === messages.length - 1;
@@ -141,7 +141,7 @@ export default function ChatBody({ messages, selectedUser, currentChatId }) {
                         key={msg._id}
                         className={`chat ${isOwnMessage ? "chat-end" : "chat-start"}`}
                     >
-                        {/* 🖼️ Avatar */}
+                        {/* Avatar */}
                         <div className="chat-image avatar">
                             <div className="w-10 h-10 rounded-full">
                                 <img
@@ -159,7 +159,7 @@ export default function ChatBody({ messages, selectedUser, currentChatId }) {
                         {/* <div className="chat-header mb-1 flex items-center" /> */}
 
                         <div className={`flex items-center gap-4 ${isOwnMessage ? "flex-row-reverse" : "flex-row"}`}>
-                            {/* ──────────────── 💬 Message Bubble ──────────────── */}
+                            {/* ──────────────── Message Bubble ──────────────── */}
                             <div 
                                 className="chat-bubble flex flex-col relative group"
                                 onContextMenu={(e) => {
@@ -169,7 +169,7 @@ export default function ChatBody({ messages, selectedUser, currentChatId }) {
                                 onTouchStart={() => handleTouchStart(msg._id)}
                                 onTouchEnd={handleTouchEnd}
                             >
-                                {/* ↩️ Reply Preview */}
+                                {/* Reply Preview */}
                                 {msg.replyTo && (
                                     <div className="p-1 mb-1 text-xs text-gray-600 border-l-2 border-gray-300 pl-2 rounded">                                        
                                         <div className="truncate">
@@ -181,14 +181,14 @@ export default function ChatBody({ messages, selectedUser, currentChatId }) {
                                     </div>
                                 )}
 
-                                {/* 📤 Forwarded Indicator */}
+                                {/* Forwarded Indicator */}
                                 {msg.forwardedFrom && (
                                     <div className="p-1 mb-1 text-xs font-light myfont-AU-NSW text-gray-500">
                                         Forwarded
                                     </div>
                                 )}
 
-                                {/* 🖼️ Media (Image/File) */}
+                                {/* Media (Image/File) */}
                                 {msg.media && (
                                     <img
                                         src={msg.media}
@@ -197,7 +197,7 @@ export default function ChatBody({ messages, selectedUser, currentChatId }) {
                                     />
                                 )}
 
-                                {/* 📝 Text Content */}
+                                {/* Text Content */}
                                 <p 
                                     className={`
                                         ${msg.deleted ? "font-light myfont-AU-NSW" : "font-semibold font-[Poppins]"} 
@@ -208,7 +208,7 @@ export default function ChatBody({ messages, selectedUser, currentChatId }) {
                                     {msg.content}
                                 </p>                                
 
-                                {/* ⏱️ Timestamp */}
+                                {/* Timestamp */}
                                 <time
                                     className={`text-[10px] mt-1 opacity-50 pointer-events-none select-none ${
                                         isOwnMessage ? "self-end text-right" : "self-start text-left"
@@ -217,10 +217,10 @@ export default function ChatBody({ messages, selectedUser, currentChatId }) {
                                     {formateMessageTime(msg.createdAt)}
                                 </time>
 
-                                {/* 😀 Reactions */}
+                                {/* Reactions */}
                                 <MessageReactions message={msg} isOwnMessage={isOwnMessage} />
 
-                                {/* ⚡ Action Modal (If Selected) */}
+                                {/* Action Modal (If Selected) */}
                                 {selectedMessageId === msg._id && (
                                     <MessageActionModal
                                         message={msg}
@@ -240,7 +240,7 @@ export default function ChatBody({ messages, selectedUser, currentChatId }) {
                             </button>
                         </div>
 
-                        {/* ✅ Status For Own Messages (Sent / Seen) */}
+                        {/* Status For Own Messages (Sent / Seen) */}
                         {isOwnMessage && (
                             <div className="chat-footer opacity-50 text-xs">
                                 {messageStatus}
@@ -250,20 +250,20 @@ export default function ChatBody({ messages, selectedUser, currentChatId }) {
                 );
             })}
 
-            {/* ──────────────── ✍️ Typing Indicator ──────────────── */}
+            {/* ──────────────── Typing Indicator ──────────────── */}
             {typingUser && typingUser.senderId !== authUser._id && (
                 <TypingBubble typingUser={typingUser} />
             )}
 
-            {/* ──────────────── 🔽 Scroll Anchor ──────────────── */}
+            {/* ──────────────── Scroll Anchor ──────────────── */}
             <div ref={bottomRef} />
 
-            {/* ──────────────── ⬇️ Floating "Scroll To Bottom" Button ──────────────── */}
+            {/* ──────────────── Floating "Scroll To Bottom" Button ──────────────── */}
             {showScrollButton && (
                 <ScrollToBottomButton onClick={scrollToBottom} />
             )}
 
-            {/* ──────────────── 📤 Forward Modal ──────────────── */}
+            {/* ──────────────── Forward Modal ──────────────── */}
             {forwardingMessageId && (
                 <ForwardModal 
                     messageId={forwardingMessageId} 

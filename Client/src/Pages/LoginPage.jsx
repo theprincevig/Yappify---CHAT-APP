@@ -42,7 +42,7 @@ export default function LoginPage() {
 
                 {/* ----------- LOGO & TITLE ----------- */}
                 <div className="text-center mb-12">
-                    <h1 className="text-4xl font-bold tracking-wider mt-2 mb-4" style={{fontFamily: "'Kaushan Script', sans serif"}}>
+                    <h1 className="text-4xl font-bold myfont-kaushan tracking-wider mt-2 mb-4">
                         Access your Yappify!
                     </h1>
                     <p className="text-base-content/60 text-xs font-[Poppins]">
@@ -66,16 +66,11 @@ export default function LoginPage() {
                                 className="pl-2"
                                 pattern="^(?![._])[A-Za-z0-9._]{3,30}(?<![._])$"
                                 minLength="3"
-                                maxLength="30"
-                                title="Username must be 3-30 characters long and can contain letters, numbers, dots (.) and underscores (_)."
+                                maxLength="30"                                
                                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                                 required 
                             />
-                        </label>
-                        {/* Username validation hint */}
-                        <div className="validator-hint text-left ml-2 hidden">
-                            Must be 3 to 30 characters containing letters, numbers, dots (.) or underscores (_)
-                        </div>
+                        </label>                        
                     </div>
 
                     {/* --- Password Input --- */}
@@ -105,9 +100,10 @@ export default function LoginPage() {
                                 )}
                             </button>
                         </label>
-                        {/* Password validation hint */}
-                        <div className="validator-hint text-left ml-2 hidden">
-                            Must be more than 8 characters, including
+                        
+                        {/* Forgot password */}
+                        <div className="text-left text-xs font-[Comfortaa] px-2 mt-1">
+                            <Link to={"/forgot-password"} className="link-primary hover:underline transition">Forgotten password?</Link>
                         </div>
                     </div>
 
@@ -119,7 +115,7 @@ export default function LoginPage() {
                     >
                         { isLoggingIn ? (
                             <>
-                                <Loader className="size-5 animate-spin"/>
+                                <Loader size={20} className="animate-spin"/>
                             </>
                         ) : (
                             "Login"
@@ -131,7 +127,7 @@ export default function LoginPage() {
                 <div className="text-center">
                     <p className="text-base-content/60 text-sm tracking-wide font-[Comfortaa]">
                         Don&apos;t have an Account?{" "}
-                        <Link to="/signup" className="link link-primary tracking-wide">
+                        <Link to="/signup" className="link link-primary tracking-wide transition">
                             SignUp
                         </Link>
                     </p>

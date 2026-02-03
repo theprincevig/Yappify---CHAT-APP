@@ -1,6 +1,6 @@
 {
   "name": "yappify",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "commonjs",
   "scripts": {
     "install-client": "npm install --prefix Client",

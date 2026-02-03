@@ -10,7 +10,7 @@ export const axiosInstance = axios.create({
     // - Use '/' for production (relative to deployed domain)
     // - Use VITE_API_BASE_URL from environment variables for development
     baseURL: import.meta.env.MODE === 'development'
-        ? import.meta.env.VITE_BASE_URL   // local dev
+        ? import.meta.env.VITE_API_BASE_URL   // local dev
         : '/',    
     withCredentials: true   // Send cookies and authentication headers with every request
 });

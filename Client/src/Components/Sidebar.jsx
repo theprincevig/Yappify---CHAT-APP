@@ -7,17 +7,17 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useFriendStore } from "../store/useFriendStore";
 
 /* --------------------------------------------------------------------------
-    🟦 SIDEBAR COMPONENT
-    -------------------------------------------------------------------------- */
+   SIDEBAR COMPONENT
+   -------------------------------------------------------------------------- */
 
 export default function Sidebar() {
   // ------------------------------------------------------------------------
-  // 🗂️ STATE & STORE HOOKS
+  // STATE & STORE HOOKS
   // ------------------------------------------------------------------------
   const {
      users,
      loading,
-     getUsersForSidebar,
+     getChats,
      setCurrentChat,
      selectedUser,
      setUsers,
@@ -30,11 +30,11 @@ export default function Sidebar() {
   const { authUser, isCheckingAuth, onlineUsers } = useAuthStore();
 
   // ------------------------------------------------------------------------
-  // 🚀 FETCH USERS & UNREAD COUNTS ON LOGIN
+  // FETCH USERS & UNREAD COUNTS ON LOGIN
   // ------------------------------------------------------------------------
   useEffect(() => {
      if (!isCheckingAuth && authUser?._id) {
-        getUsersForSidebar();
+        getChats();
         getUnreadCounts();
      } else {
         // 🔄 Reset sidebar if logged out
@@ -43,7 +43,7 @@ export default function Sidebar() {
   }, [isCheckingAuth, authUser]);
 
   // ------------------------------------------------------------------------
-  // 🔌 SOCKET: FRIEND UPDATES IN REAL-TIME
+  // SOCKET: FRIEND UPDATES IN REAL-TIME
   // ------------------------------------------------------------------------
   useEffect(() => {
      initFriendSocket();
@@ -51,7 +51,7 @@ export default function Sidebar() {
      const { connectedSocket: socket } = useFriendStore.getState();
      if (!socket) return;
 
-     // ➕ Add friend to sidebar when request is accepted
+     // Add friend to sidebar when request is accepted
      const handleFriendAdded = ({ friend }) => {
         setUsers((prev) => {
           if (!prev.find((u) => u._id === friend._id)) {
@@ -61,7 +61,7 @@ export default function Sidebar() {
         });
      };
 
-     // ➖ Remove friend from sidebar if unfriended
+     // Remove friend from sidebar if unfriended
      const handleFriendRemoved = ({ userId }) => {
         setUsers((prev) => prev.filter((u) => u._id !== userId));
      };
@@ -69,7 +69,7 @@ export default function Sidebar() {
      socket.on("friendRequestAccepted", handleFriendAdded);
      socket.on("friendRemoved", handleFriendRemoved);
 
-     // 🧹 Cleanup listeners & disconnect socket
+     // Cleanup listeners & disconnect socket
      return () => {
         socket.off("friendRequestAccepted", handleFriendAdded);
         socket.off("friendRemoved", handleFriendRemoved);
@@ -78,7 +78,7 @@ export default function Sidebar() {
   }, [initFriendSocket, disconnectFriendSocket, setUsers]);
 
   // ------------------------------------------------------------------------
-  // 📲 HANDLE CHAT SELECTION (RESPONSIVE)
+  // HANDLE CHAT SELECTION (RESPONSIVE)
   // ------------------------------------------------------------------------
   function handleResponsiveness(user) {
      const chatId = user.chatId || null;
@@ -90,20 +90,20 @@ export default function Sidebar() {
   }
 
   // ------------------------------------------------------------------------
-  // 🖥️ SIDEBAR UI
+  // SIDEBAR UI
   // ------------------------------------------------------------------------
   return (
      <div className="w-full md:w-1/3 bg-base-200 p-3 border-base-300 border-r-2 overflow-y-auto">
-        {/* 🏷️ Sidebar Title */}
+        {/* Sidebar Title */}
         <h2 className="text-3xl font-bold mb-3 tracking-wider myfont-kaushan">
           Chats
         </h2>
 
-        {/* ⏳ Loader State */}
+        {/* Loader State */}
         {loading ? (
           <SidebarLoader type="list" />
         ) : users.length === 0 ? (
-          // 🚫 No Friends Placeholder
+          // No Friends Placeholder
           <div className="flex flex-col gap-2 items-center justify-center h-1/2">
              <h1 className="text-4xl text-gray-600 font-[Poppins]">
                 No Friends yet!
@@ -113,10 +113,10 @@ export default function Sidebar() {
              </p>
           </div>
         ) : (
-          // ✅ Friends List
+          // Friends List
           <ul className="space-y-2">
              {users
-                // 🔝 Sort: Online friends first
+                // Sort: Online friends first
                 .sort(
                   (a, b) =>
                      onlineUsers.includes(b._id) - onlineUsers.includes(a._id)
@@ -132,7 +132,7 @@ export default function Sidebar() {
                                 : "hover:bg-base-300 cursor-pointer"
                           }`}
                      >
-                        {/* 🖼️ Avatar + Online Status Dot */}
+                        {/* Avatar + Online Status Dot */}
                         <div className="relative avatar">
                           <div className="w-10 rounded-full">
                              <img
@@ -146,7 +146,7 @@ export default function Sidebar() {
                           </div>
                         </div>
 
-                        {/* 👤 Friend Info + 🔔 Unread Count */}
+                        {/* Friend Info + Unread Count */}
                         <div className="flex-1 flex justify-between items-center">
                           <p className="font-[Poppins]">
                              {user.fullName ? user.fullName : user.username}

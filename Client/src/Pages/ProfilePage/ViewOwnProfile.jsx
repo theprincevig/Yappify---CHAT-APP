@@ -5,6 +5,8 @@ import { Pencil } from "lucide-react";
 // =======================
 
 export default function ViewOwnProfile({ authUser, setIsEditing }) {
+    if (!authUser) return null;
+    
     return (
         <div className="text-center space-y-6">
             {/* ======= Profile Avatar & Username ======= */}

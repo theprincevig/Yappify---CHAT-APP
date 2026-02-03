@@ -20,7 +20,7 @@ const storage = new CloudinaryStorage({
     cloudinary: cloudinary, // Connect storage to configured Cloudinary instance
     params: {
         folder: 'yappify_Chat_App',           // All uploaded files stored inside this folder
-        allowedFormats: ["png", "jpg", "jpeg"] // Restrict uploads to safe image formats
+        allowed_formats: ["png", "jpg", "jpeg"] // Restrict uploads to safe image formats
     },
 });
 

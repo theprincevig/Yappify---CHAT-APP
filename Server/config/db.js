@@ -13,7 +13,7 @@ const DB_URL = process.env.ATLASDB_URL; // MongoDB Atlas connection URL
 // --------------------
 module.exports.connectDB = async () => {
     if (!DB_URL) {
-        console.error("❌ MongoDB connection string is missing (ATLASDB_URL not set)");
+        console.error("MongoDB connection string is missing (ATLASDB_URL not set)");
         process.exit(1);
     }
 
@@ -21,11 +21,11 @@ module.exports.connectDB = async () => {
         // Try connecting to MongoDB using Mongoose
         const conn = await mongoose.connect(DB_URL);
 
-        // ✅ Connection successful (disabled for production use)
+        // Connection successful (disabled for production use)
         console.log(`Connected to DB: --> ${conn.connection.name} <--`);
-        // 💡 Would display the database name
+        // Would display the database name
     } catch (error) {
-        // ❌ Connection failed
+        // Connection failed
         console.error(`connection failed ${error.message}`);
         
         process.exit(1); // Exit the process with failure code
