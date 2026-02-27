@@ -1,18 +1,24 @@
 // Importing the User model
-const User = require("../models/user");
+const User = require("../models/user.js");
 
 // --------------------
 // CHECK AUTHENTICATION STATUS
 // --------------------
-module.exports.checkAuth = (req, res) => {
+module.exports.session = (req, res) => {
     // If user is authenticated, return user details
     if (req.isAuthenticated()) {
-        return res.status(200).json(req.user);
+        return res.status(200).json({
+            authenticated: true,
+            user: req.user
+        });
     } else {
         // If not authenticated, return null
-        return res.status(200).json(null);
+        return res.status(200).json({
+            authenticated: false,
+            user: null
+        });
     }
-}
+};
 
 // --------------------
 // SIGNUP USER
@@ -20,17 +26,18 @@ module.exports.checkAuth = (req, res) => {
 module.exports.signupUser = async (req, res, next) => {
     try {
         // Extract username, email, and password from request body
-        let { username, email, password } = req.body;
-        const newUser = new User({ username, email });
+        const { username, email, password } = req.body;
 
         // Check if all fields are provided
         if (!username || !email || !password) {
             return res.status(400).json({ success: false, message: "All fields are required" });
         }
 
+        // Create new user object
+        const newUser = new User({ username, email });
+
         // Register new user with password
         const registeredUser = await User.register(newUser, password);
-        // console.log(registeredUser);
 
         // Log the user in after signup
         req.login(registeredUser, (err) => {
@@ -42,10 +49,10 @@ module.exports.signupUser = async (req, res, next) => {
 
     } catch (error) {
         // Log error in server console
-        console.log(error);
+        console.error("Signup Error: ", error);
         return res.status(500).json({ success: false, error: error.message });
     }
-}
+};
 
 // --------------------
 // LOGIN USER
@@ -82,10 +89,10 @@ module.exports.loginUser = async (req, res, next) => {
         });
 
     } catch (error) {
-        // Pass error to global error handler
+        console.error("Login Error: ", error);
         next(error); 
     }
-}
+};
 
 // --------------------
 // LOGOUT USER
@@ -101,14 +108,15 @@ module.exports.logoutUser = (req, res, next) => {
         });
 
     } catch (error) {
+        console.error("Logout Error: ", error);
         return res.status(500).json({ success: false, error: error.message });
     }
-}
+};
 
 // --------------------
-// SET FUN MODE AFTER SIGNUP
+// UPDATE NOTIFICATION MODE AFTER SIGNUP
 // --------------------
-module.exports.setFunMode = async (req, res) => {
+module.exports.updateNotifications = async (req, res) => {
     try {
         const userId = req.user._id;  // Get logged-in user ID
         const { funMode } = req.body; // Extract fun mode value
@@ -119,10 +127,7 @@ module.exports.setFunMode = async (req, res) => {
         }
 
         const user = await User.findById(userId);
-
-        if (!user) {
-            return res.status(404).json({ error: "User not found." });
-        }
+        if (!user) return res.status(404).json({ error: "User not found." });
 
         // Prevent user from changing funMode once locked
         if (user.funModeLocked) {
@@ -134,13 +139,17 @@ module.exports.setFunMode = async (req, res) => {
         user.funModeLocked = true;
         await user.save();
 
-        return res.status(200).json({ success: true, message: "Notification mode selected successfully.", funMode: user.funMode });
+        return res.status(200).json({
+            success: true, 
+            message: "Notification mode selected successfully.", 
+            funMode: user.funMode
+        });
 
     } catch (error) {
-        console.error("Error in setFunMode:", error);
+        console.error("Error in update notification mode error: ", error);
         return res.status(500).json({ error: "Server error." });
     }
-}
+};
 
 // --------------------
 // SAVE SUBSCRIPTION (for push notifications)
@@ -149,14 +158,10 @@ module.exports.saveSubscription = async (req, res) => {
     try {
         const userId = req.user._id;  // Get logged-in user ID
         const { subscription, notificationsEnabled } = req.body; // Extract subscription details
-
-        // console.log("📩 Received subscription:", subscription);
         
         const user = await User.findById(userId);
 
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
+        if (!user) return res.status(404).json({ error: "User not found" });
 
         // Always save the subscription object
         user.notificationSubscription = subscription;
@@ -171,12 +176,11 @@ module.exports.saveSubscription = async (req, res) => {
                 user.notificationsEnabled = notificationsEnabled;
             }
         }
-
         await user.save();
         
         res.status(200).json({ message: "Subscription saved." });
     } catch (error) {
-        console.log(`ERROR : ${error}`);
+        console.error("Save subscription error: ", error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -191,9 +195,7 @@ module.exports.toggleNotifications = async (req, res) => {
 
         const user = await User.findById(userId);
 
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
+        if (!user) return res.status(404).json({ error: "User not found" });
 
         // Fun mode users cannot toggle notifications
         if (user.funMode === "fun") {
@@ -215,7 +217,32 @@ module.exports.toggleNotifications = async (req, res) => {
         });
 
     } catch (error) {
-        console.log(`ERROR : ${error}`);
+        console.error("Toggle notification error: ", error);
         res.status(500).json({ error: error.message });
     }
-}
+};
+
+// --------------------
+// CHANGE PASSWORD
+// --------------------
+module.exports.changePassword = async (req, res) => {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.user._id;
+
+    try {
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ success: false, message: "User not found." });
+
+        const isMatch = await user.authenticate(oldPassword);
+        if (!isMatch) return res.status(400).json({ success: false, message: "Old password is incorrect." });
+
+        await user.setPassword(newPassword);
+        await user.save();
+
+        return res.status(200).json({ success: true, message: "Password updated successfully!" });
+
+    } catch (error) {
+        console.error("Change password error: ", error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+};

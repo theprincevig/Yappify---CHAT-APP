@@ -13,12 +13,9 @@ import toast from "react-hot-toast";
  */
 export default function MessageInput({ selectedUser }) {
   // -------------------- State --------------------
-  // Message text
-  const [content, setContent] = useState("");
-  // Selected media file
-  const [media, setMedia] = useState(null);
-  // Media preview URL
-  const [mediaPreview, setMediaPreview] = useState(null);
+  const [content, setContent] = useState("");   // Message text
+  const [media, setMedia] = useState(null);   // Selected media file
+  const [mediaPreview, setMediaPreview] = useState(null);   // Media preview URL
 
   // -------------------- Stores --------------------
   const { sendMessage, currentChatId, replyingTo, clearReplyingTo } = useMessageStore();
@@ -87,11 +84,13 @@ export default function MessageInput({ selectedUser }) {
 
     // Emit stopTyping after 2 seconds of inactivity
     typingTimeoutRef.current = setTimeout(() => {
-      connectedSocket.emit("stopTyping", {
-        chatId: currentChatId,
-        senderId: authUser._id,
-        receiverId: selectedUser._id,
-      });
+      if (connectedSocket && currentChatId && selectedUser) {
+        connectedSocket.emit("stopTyping", {
+          chatId: currentChatId,
+          senderId: authUser._id,
+          receiverId: selectedUser._id,
+        });
+      }
     }, 2000);
   }
 

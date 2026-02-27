@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Camera, Loader, Save, Trash2, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuthStore } from "../../store/useAuthStore";
+import { validateUsername, validationMessages } from "../../utils/validators";
+import ConfirmModal from "../../Components/PopupModals/ConfirmModal";
 
 /**
  * EditProfile Component
@@ -10,22 +12,26 @@ import { useAuthStore } from "../../store/useAuthStore";
  */
 export default function EditProfile({ authUser, setIsEditing }) {
     // Store actions and state
-    const { isUpdatingProfile, updateProfile } = useAuthStore();
+    const { isUpdatingProfile, updateProfile, logout } = useAuthStore();
 
     // Toggle username editing (disabled due to server issues)
-    const allowUsernameEdit = false;
+    const allowUsernameEdit = true;
 
     // Initial form data
-    const data = {
+    const initData = {
         username: authUser.username || "",
         fullName: authUser.fullName || "",
         bio: authUser.bio || ""
     };
 
     // Local state for form and avatar
-    const [formData, setFormData] = useState(data);
+    const [formData, setFormData] = useState(initData);
     const [selectedImgPreview, setSelectedImgPreview] = useState(authUser.profilePic || "/avatar.png");
     const [selectedImgFile, setSelectedImgFile] = useState(null);
+
+    const [usernameError, setUsernameError] = useState("");
+    const [usernameTouched, setUsernameTouched] = useState(false);
+    const [showUsernameWarning, setShowUsernameWarning] = useState(false);
 
     // ----------------------------------------
     // Avatar Upload & Preview Handler
@@ -56,20 +62,91 @@ export default function EditProfile({ authUser, setIsEditing }) {
     // ----------------------------------------
     // Save Profile Changes Handler
     // ----------------------------------------
-    async function handleSave() {
+    const submitProfileUpdate = async () => {
         try {
+            if (usernameError) {
+                toast.error("Please fix username errors.");
+                return;
+            }
+
             // If avatar is removed, send default avatar path
-            const profilePicToSend = selectedImgPreview === "/avatar.png" ? "/avatar.png" : selectedImgFile;
+            const profilePicToSend = 
+                selectedImgPreview === "/avatar.png" 
+                    ? "/avatar.png" 
+                    : selectedImgFile;
 
             await updateProfile({ ...formData, profilePic: profilePicToSend });
             toast.success("Profile updated successfully!");
             setIsEditing(false);
 
+            return true;
+
         } catch (error) {
-            toast.error(error.response?.data?.message || "Failed to update profile");
+            toast.error(
+                error.response?.data?.error ||
+                error.response?.data?.message || 
+                "Failed to update profile"
+            );
             console.log(error);
+            return false;
         }
     }
+
+    const handleSave = async () => {
+        // If username changed show confirmation popup
+        if (formData.username !== authUser.username) {
+            setShowUsernameWarning(true);
+            return;
+        }
+        await submitProfileUpdate();
+    }
+
+    // -----------------------------
+    // Derived States
+    // -----------------------------
+    const isProfilePicRemoved =
+        selectedImgPreview === "/avatar.png" &&
+        authUser.profilePic !== "/avatar.png";
+
+    const isChanged = 
+        formData.username !== authUser.username ||
+        formData.fullName !== authUser.fullName ||
+        formData.bio !== authUser.bio ||
+        selectedImgFile !== null ||
+        isProfilePicRemoved;
+    
+    // -----------------------------
+    // Helpers
+    // -----------------------------
+    const handleChange = (field, value) => {
+        setFormData((prev) => ({ ...prev, [field]: value }));
+    };
+
+    const validateUsernameField = (value) => {
+        if (value === authUser.username) {
+            setUsernameError("");
+            return;
+        }
+
+        if (!validateUsername(value)) {
+            setUsernameError(validationMessages.username);
+        } else {
+            setUsernameError("");
+        }
+    };
+
+    const handleOnChangeUsername = (value) => {
+        handleChange("username", value);
+        validateUsernameField(value);
+    };
+
+    const confirmUsernameChange = async () => {
+        setShowUsernameWarning(false);
+        const success = await submitProfileUpdate();
+        
+        if (success) await logout();
+    };
+
 
     // ----------------------------------------
     // Render UI
@@ -131,19 +208,25 @@ export default function EditProfile({ authUser, setIsEditing }) {
                 <fieldset className="border border-gray-500 bg-base-200 rounded-xl p-2">
                     <legend className="text-sm font-medium px-2">Username</legend>
                     {allowUsernameEdit ? (
-                        // Editable username input
-                        <input
-                            type="text"
-                            value={formData.username}
-                            pattern="^(?![._])[A-Za-z0-9._]{3,30}(?<![._])$"
-                            minLength="3"
-                            maxLength="30"
-                            onChange={(e) =>
-                                setFormData({ ...formData, username: e.target.value })
-                            }
-                            className="w-full outline-none bg-transparent"
-                            required
-                        />
+                        <>
+                            {/* Editable username input */}
+                            <input
+                                type="text"
+                                value={formData.username}
+                                onChange={(e) => handleOnChangeUsername(e.target.value)}
+                                onBlur={() => setUsernameTouched(true)}
+                                className={`
+                                    w-full outline-none bg-transparent 
+                                    ${usernameError && usernameTouched ? "border-red-500" : ""}
+                                `}
+                                required
+                            />
+                            {usernameError && usernameTouched && (
+                                <p className="text-red-500 font-[Comfortaa] text-xs sm:text-sm mt-1">
+                                    {usernameError}
+                                </p>
+                            )}
+                        </>
                     ) : (
                         // Disabled username input with warning
                         <>
@@ -157,7 +240,7 @@ export default function EditProfile({ authUser, setIsEditing }) {
                                 className="w-full outline-none bg-transparent cursor-not-allowed text-zinc-400"
                             />
                             <p className="text-yellow-500 font-[Poppins] opacity-70 text-xs mt-1">
-                                ⚠️ You can't edit your username right now due to server issues.
+                                ⚠️ Username editing is temporarily disabled.
                             </p>
                         </>
                     )}
@@ -169,7 +252,7 @@ export default function EditProfile({ authUser, setIsEditing }) {
                     <input
                         type="text"
                         value={formData.fullName}
-                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                        onChange={(e) => handleChange("fullName", e.target.value)}
                         className="w-full outline-none bg-transparent"
                     />
                 </fieldset>
@@ -179,7 +262,7 @@ export default function EditProfile({ authUser, setIsEditing }) {
                     <legend className="text-sm font-medium fieldset-label px-2">Bio</legend>
                     <textarea
                         value={formData.bio}
-                        onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                        onChange={(e) => handleChange("bio", e.target.value)}
                         className="w-full outline-none bg-transparent"
                     />
                 </fieldset>
@@ -192,7 +275,7 @@ export default function EditProfile({ authUser, setIsEditing }) {
                 {/* Save Button */}
                 <button
                     onClick={handleSave}
-                    disabled={isUpdatingProfile}
+                    disabled={isUpdatingProfile || !isChanged || !!usernameError}
                     className="btn flex items-center gap-1 bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition cursor-pointer"
                 >
                     <Save size={16} /> {isUpdatingProfile ? <Loader size={16} className="animate-spin" /> : "Save"}
@@ -206,6 +289,14 @@ export default function EditProfile({ authUser, setIsEditing }) {
                     <X size={16} /> Cancel
                 </button>
             </div>
+
+            
+            <ConfirmModal 
+                loading={isUpdatingProfile}
+                onConfirm={confirmUsernameChange}
+                isOpen={showUsernameWarning}
+                onCancel={() => setShowUsernameWarning(false)}
+            />
         </div>
     );
 }

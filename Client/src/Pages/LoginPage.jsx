@@ -42,7 +42,7 @@ export default function LoginPage() {
 
                 {/* ----------- LOGO & TITLE ----------- */}
                 <div className="text-center mb-12">
-                    <h1 className="text-4xl font-bold tracking-wider mt-2 mb-4" style={{fontFamily: "'Kaushan Script', sans serif"}}>
+                    <h1 className="text-4xl font-bold myfont-kaushan tracking-wider mt-2 mb-4">
                         Access your Yappify!
                     </h1>
                     <p className="text-base-content/60 text-xs font-[Poppins]">
@@ -64,18 +64,10 @@ export default function LoginPage() {
                                 placeholder="username"
                                 value={formData.username}
                                 className="pl-2"
-                                pattern="^(?![._])[A-Za-z0-9._]{3,30}(?<![._])$"
-                                minLength="3"
-                                maxLength="30"
-                                title="Username must be 3-30 characters long and can contain letters, numbers, dots (.) and underscores (_)."
                                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                                 required 
                             />
                         </label>
-                        {/* Username validation hint */}
-                        <div className="validator-hint text-left ml-2 hidden">
-                            Must be 3 to 30 characters containing letters, numbers, dots (.) or underscores (_)
-                        </div>
                     </div>
 
                     {/* --- Password Input --- */}
@@ -105,10 +97,6 @@ export default function LoginPage() {
                                 )}
                             </button>
                         </label>
-                        {/* Password validation hint */}
-                        <div className="validator-hint text-left ml-2 hidden">
-                            Must be more than 8 characters, including
-                        </div>
                     </div>
 
                     {/* --- Submit Button --- */}

@@ -7,11 +7,11 @@ import { useMessageStore } from "../store/useMessageStore";
 import { useEffect } from "react";
 
 /* ===========================
-  🟢 ChatContainer Component
+  ChatContainer Component
   =========================== */
 
 export default function ChatContainer() {
-  // 🗃️ State & Actions from Store
+  // State & Actions from Store
   const {
    messages,
    getMessages,
@@ -24,19 +24,19 @@ export default function ChatContainer() {
   } = useMessageStore();
 
   /* ---------------------------------
-    🔌 Socket Listeners Lifecycle
+    Socket Listeners Lifecycle
     --------------------------------- */
   useEffect(() => {
    if (!currentChatId) return;
 
-   // 👉 Setup listeners for active chat
+   // Setup listeners for active chat
    initializeSocketListeners([currentChatId]);
-   // 📴 Cleanup listeners on unmount
+   // Cleanup listeners on unmount
    return () => disconnectSocketListeners();
   }, [currentChatId, initializeSocketListeners, disconnectSocketListeners]);
 
   /* ---------------------------------
-    📩 Fetch Messages on Chat Change
+    Fetch Messages on Chat Change
     --------------------------------- */
   useEffect(() => {
    if (selectedUser?._id && currentChatId) {
@@ -45,12 +45,12 @@ export default function ChatContainer() {
   }, [selectedUser?._id, currentChatId, getMessages]);
 
   /* ---------------------------------
-    🚫 No User Selected: Hide Chat UI
+    No User Selected: Hide Chat UI
     --------------------------------- */
   if (!selectedUser) return null;
 
   /* ---------------------------------
-    🖼️ Chat Window Layout & Sections
+    Chat Window Layout & Sections
     --------------------------------- */
   return (
    <div
@@ -63,12 +63,12 @@ export default function ChatContainer() {
     `}
    >
     {/* ===========================
-       👤 Chat Header (User Info)
+       Chat Header (User Info)
        =========================== */}
     <ChatHeader selectedUser={selectedUser} setSelectedUser={setSelectedUser} />
 
     {/* ===========================
-       💬 Chat Body (Messages/List)
+       Chat Body (Messages/List)
        =========================== */}
     {loading ? (
       <div className="flex-1 flex flex-col overflow-auto">
@@ -83,7 +83,7 @@ export default function ChatContainer() {
     )}
 
     {/* ===========================
-       ⌨️ Message Input (Composer)
+       Message Input (Composer)
        =========================== */}
     <MessageInput selectedUser={selectedUser} />
    </div>

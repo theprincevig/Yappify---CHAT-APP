@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { axiosInstance } from '../lib/axios';
 import { getSocket } from '../lib/socket';
+import { API_PATHS } from '../utils/apiPaths';
 
 /**
  * =========================
@@ -15,36 +16,43 @@ export const useAuthStore = create((set, get) => ({
     //   STATE VARIABLES
     // =========================
     authUser: null,                // Current authenticated user
-    isSigningUp: false,            // Signup loading state
-    isLoggingIn: false,            // Login loading state
-    isUpdatingProfile: false,      // Profile update loading state
-    isCheckingAuth: true,          // Auth check loading state
-    showFunModePopup: false,       // Show fun mode popup
     onlineUsers: [],               // List of online users
     connectedSocket: null,         // Socket connection instance
+    showFunModePopup: false,       // Show fun mode popup
+
+    isCheckingAuth: true,          // Auth check loading state
+    isSigningUp: false,            // Signup loading state
+    isLoggingIn: false,            // Login loading state
+    isLoadingProfile: false,  // Profile loading state
+    isUpdatingProfile: false,      // Profile update loading state
+    isResettingPassword: false, // Password reset loading state
+
+    // =========================
+    //  FunMode Popup
+    // =========================
+    setFunModePopup: (value) => set({ showFunModePopup: value }),
 
     // =========================
     //   AUTH CHECK
     // =========================
-    checkAuth: async () => {
+    session: async () => {
         set({ isCheckingAuth: true });
         try {
-            const res = await axiosInstance.get("/api/auth/checkAuth");
-            if (res.data) {
-                set({ authUser: res.data });
-                get().connectSocket(res.data);
+            const res = await axiosInstance.get(API_PATHS.AUTH.SESSION);
+            const user = res.data.user;
+
+            if (user) {
+                set({ authUser: user });
+                get().connectSocket(user);
 
                 // Show fun mode popup if not locked
-                if (!res.data.funModeLocked) {
-                    set({ showFunModePopup: true });
-                } else {
-                    set({ showFunModePopup: false });
-                }
+                const mode = !user.funModeLocked && !user.funMode;
+                set({ showFunModePopup: mode });
             } else {
                 set({ authUser: null, showFunModePopup: false });
             }
         } catch (error) {
-            console.error(`Error in checkAuth : ${error}`);
+            console.error(`Error in check auth session : ${error}`);
             set({ authUser: null, showFunModePopup: false });
         } finally {
             set({ isCheckingAuth: false });
@@ -57,11 +65,12 @@ export const useAuthStore = create((set, get) => ({
     signup: async (data) => {
         set({ isSigningUp: true });
         try {
-            const res = await axiosInstance.post("/api/auth/signup", data);
-            set({ authUser: res.data });            
-            get().connectSocket(res.data);
+            const res = await axiosInstance.post(API_PATHS.AUTH.SIGNUP, data);
+            const user = res.data;
 
-            set({ showFunModePopup: true });
+            set({ authUser: user });            
+            get().connectSocket(user);
+
         } catch (error) {
             console.error(`Signup error: ${error}`);
             throw error;
@@ -76,17 +85,16 @@ export const useAuthStore = create((set, get) => ({
     login: async (data) => {
         set({ isLoggingIn: true });
         try {
-            const res = await axiosInstance.post("/api/auth/login", data);
+            const res = await axiosInstance.post(API_PATHS.AUTH.SESSION, data);
+            const user = res.data.user;
 
-            set({ authUser: res.data.user });
-            get().connectSocket(res.data.user);
+            set({ authUser: user });
+            get().connectSocket(user);
+            await get().session(); // 🔥 THIS IS IMPORTANT
 
             // Show fun mode popup if not locked
-            if (res.data && !res.data.user.funModeLocked) {
-                set({ showFunModePopup: true });
-            } else {
-                set({ showFunModePopup: false });
-            }
+            const mode = !user.funModeLocked && !user.funMode;
+            set({ showFunModePopup: mode });
         } catch (error) {
             console.error(`Login error: ${error}`);
             throw error;
@@ -100,46 +108,54 @@ export const useAuthStore = create((set, get) => ({
     // =========================
     logout: async () => {
         try {
-            await axiosInstance.post("/api/auth/logout");
-            set({ authUser: null });
             get().disconnectSocket();
+            await axiosInstance.delete(API_PATHS.AUTH.SESSION);
+            set({ authUser: null });
         } catch (error) {
             console.log("Logout error:", error);
             throw error;
         }
     },
 
-    // =========================
-    //   FUN MODE
-    // =========================
-    setFunMode: async (mode) => {
+    // ===========================
+    //  UPDATE NOTIFICATION MODE
+    // ===========================
+    updateNotifications: async (mode) => {
         try {
-            const res = await axiosInstance.post("/api/auth/set-fun-mode", { funMode: mode });
+            const res = await axiosInstance.patch(API_PATHS.AUTH.UPDATE_MODE, {
+                funMode: mode
+            });
             set((state) => ({
-                authUser: { ...state.authUser, funMode: res.data.funMode, funModeLocked: true },
+                authUser: {
+                    ...state.authUser,
+                    funMode: res.data.funMode,
+                    funModeLocked: true
+                },
                 showFunModePopup: false,
             }));
         } catch (error) {
-            console.error(`Error setting Fun Mode: ${error}`);
+            console.error(`Error setting Update Mode: ${error}`);
+            throw error;
         }
     },
 
     // =========================
     //   PUSH SUBSCRIPTION
     // =========================
-    sendSubscriptionToServer: async (subscription) => {
+    saveSubscription: async (subscription) => {
         try {
             if (!subscription) return;
 
-            const res = await axiosInstance.post("/api/auth/save-subscription", 
+            const res = await axiosInstance.post(API_PATHS.AUTH.SAVE_SUBSCRIPTION, 
                 { subscription },
                 { withCredentials: true },
             )
 
-            console.log("✅ Subscription saved:", res.data);
+            console.log("Subscription saved:", res.data);
             return res.data;
         } catch (error) {
-            console.error("❌ Error sending subscription:", error);
+            console.error("Error sending subscription:", error);
+            throw error;
         }
     },
 
@@ -148,21 +164,29 @@ export const useAuthStore = create((set, get) => ({
     // =========================
     toggleNotifications: async (enabled) => {
         try {
-            const res = await axiosInstance.post("/api/auth/toggle-notifications", { enabled });
+            const res = await axiosInstance.patch(API_PATHS.AUTH.TOGGLE_NOTIFICATIONS, {
+                enabled
+            });
             set((state) => ({
-                authUser: { ...state.authUser, notificationsEnabled: res.data.notificationsEnabled },
+                authUser: {
+                    ...state.authUser,
+                    notificationsEnabled: res.data.notificationsEnabled
+                },
             }));
         } catch (error) {
             console.error(`Error toggling notifications: ${error}`);
+            throw error;
         }
     },
 
     // =========================
     //   VIEW PROFILE
     // =========================
-    viewProfile: async (profileId) => {
+    viewProfile: async (userId) => {
+        set({ isLoadingProfile: true });
+
         try {
-            const res = await axiosInstance.get(`/chat/profile/${profileId}`);
+            const res = await axiosInstance.get(API_PATHS.USERS.GET_PROFILE(userId));
             if (res.data?.success) {
                 return res.data.user; // Return the user object
             } else {
@@ -172,6 +196,8 @@ export const useAuthStore = create((set, get) => ({
         } catch (error) {
             console.error("Error fetching user profile:", error);
             return null;
+        } finally {
+            set({ isLoadingProfile: false });
         }
     },
 
@@ -183,11 +209,13 @@ export const useAuthStore = create((set, get) => ({
         try {
             const formData = new FormData();
             if (data.fullName) formData.append("fullName", data.fullName);
-            if (data.username) formData.append("username", data.username);
+            if (data.username && data.username !== get().authUser.username) {
+                formData.append("username", data.username);
+            }
             if (data.bio) formData.append("bio", data.bio);
             if (data.profilePic) formData.append("profilePic", data.profilePic);
 
-            const res = await axiosInstance.put(`/chat/profile/me`, formData, {
+            const res = await axiosInstance.patch(API_PATHS.USERS.UPDATE_ME, formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
 
@@ -207,14 +235,39 @@ export const useAuthStore = create((set, get) => ({
     },
 
     // =========================
+    //   CHANGE PASSWORD
+    // =========================
+    changePassword: async (oldPassword, newPassword) => {
+        set({ isResettingPassword: true });
+
+        try {
+            const res = await axiosInstance.patch(API_PATHS.AUTH.CHANGE_PASSWORD, {
+                oldPassword,
+                newPassword
+            });
+            return res.data;
+        } catch (error) {
+            console.error("Error changing password:", error);
+            throw (
+                error.response?.data || {
+                success: false,
+                message: "Unable to change password.",
+                }
+            );
+        } finally {
+            set({ isResettingPassword: false });
+        }
+    },
+
+    // =========================
     //   SOCKET CONNECTION
     // =========================
     connectSocket: (user) => {
-        console.log("📥 connectSocket called with:", user);
+        console.log("connectSocket called with:", user);
         
         const authUser = user || get().authUser;
         if (!authUser?._id) {
-            console.warn("⚠️ No authUser found when trying to connect socket");
+            console.warn("No authUser found when trying to connect socket");
             return;
         }
 
@@ -224,29 +277,32 @@ export const useAuthStore = create((set, get) => ({
         if (connectedSocket) {
             connectedSocket.off();
             connectedSocket.disconnect();
+            console.log("Disconnected old socket before reconnecting");
         }
 
         // Create new socket for user
-        console.log("🟢 Creating socket for user:", authUser._id);
+        console.log("Creating socket for user:", authUser._id);
         const socket = getSocket(authUser._id);
 
         // Trigger connection
         socket.connect();
 
         // Log auth payload
-        console.log("📤 Socket auth payload:", socket.auth);
+        console.log("Socket auth payload:", socket.auth);
 
         set({ connectedSocket: socket });
 
         // Listen for socket events
         socket.on("connect", () => {
-            console.log("🔌 [FRONTEND CONNECTED] socket.id:", socket.id);
+            console.log("[FRONTEND CONNECTED] socket.id:", socket.id);
         });
 
         socket.on("getOnlineUsers", (userIds) => {
-            console.log("👥 [FRONTEND RECEIVED onlineUsers]", userIds);
+            console.log("[FRONTEND RECEIVED onlineUsers]", userIds);
             set({ onlineUsers: userIds });
         });
+
+        set({ connectedSocket: socket });
     },
 
     // =========================

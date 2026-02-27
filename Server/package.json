@@ -3,7 +3,7 @@
     "node": "22.14.0"
   },
   "name": "yappify-server",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "main": "script.js",
   "type": "commonjs",
   "scripts": {

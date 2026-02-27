@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { Eye, EyeOff, KeyRound, Loader, Mail, User } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import FunModeModal from "../Components/PopupModals/FunModeModal";
+import PasswordStrengthMeter from "../Components/PasswordStrengthMeter";
+import { validateEmail, validateUsername, validationMessages } from "../utils/validators";
 
 // =======================
 //   Signup Page Component
@@ -21,21 +23,39 @@ export default function SignupPage() {
     // =======================
     const [showPassword, setShowPassword] = useState(false);
     const [formData, setFormData] = useState(data);
+    const [errors, setErrors] = useState({ username: "", email: "" });
+    const navigate = useNavigate();
 
     // =======================
     //   Auth Store Hooks
     // =======================
-    const { signup, isSigningUp, showFunModePopup, setShowFunModePopup } = useAuthStore();
+    const {
+        signup, 
+        isSigningUp, 
+        showFunModePopup, 
+        setShowFunModePopup
+    } = useAuthStore();
 
     // =======================
     //   Handle Form Submit
     // =======================
     async function handleSubmit(e) {
         e.preventDefault();
+        setErrors({ username: "", email: "" });
+
+        if (!validateUsername(formData.username)) {
+            setErrors(prev => ({ ...prev, username: validationMessages.username }));
+            return;
+        }
+        if (!validateEmail(formData.email)) {
+            setErrors(prev => ({ ...prev, email: validationMessages.email }));
+            return;
+        }
 
         try {
             await signup(formData); // Call signup from store
             toast.success("Welcome to Yappify!");
+            navigate("/chats");
             setFormData(data); // Reset form
         } catch (error) {
             toast.error(error.response?.data?.message || "Signup failed!");
@@ -52,7 +72,7 @@ export default function SignupPage() {
 
                 {/* ===== Logo & Welcome Text ===== */}
                 <div className="text-center mb-12">
-                    <h1 className="text-4xl font-bold tracking-wider mt-2 mb-4" style={{fontFamily: "'Kaushan Script', sans serif"}}>
+                    <h1 className="text-4xl font-bold myfont-kaushan tracking-wider mt-2 mb-4">
                         Join Yappify!
                     </h1>
                     <p className="text-base-content/60 text-xs font-[Poppins]">
@@ -74,17 +94,17 @@ export default function SignupPage() {
                                 placeholder="username"
                                 value={formData.username}
                                 className="pl-2"
-                                pattern="^(?![._])[A-Za-z0-9._]{3,30}(?<![._])$"
-                                minLength="3"
-                                maxLength="30"
-                                title="Username must be 3-30 characters long and can contain letters, numbers, dots (.) and underscores (_)."
-                                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                                required 
+                                onChange={(e) => {
+                                    setFormData({ ...formData, username: e.target.value });
+                                    setErrors(prev => ({ ...prev, username: "" }));
+                                }}
                             />
                         </label>
-                        <div className="validator-hint text-left ml-2 hidden">
-                            Must be 3 to 30 characters containing letters, numbers, dots (.) or underscores (_)
-                        </div>
+                        {errors.username && (
+                            <p className="text-left text-xs text-red-500 font-[Poppins] font-light mx-2 mt-1">
+                                {errors.username}
+                            </p>
+                        )}
                     </div>
 
                     {/* --- Email Field --- */}
@@ -98,13 +118,17 @@ export default function SignupPage() {
                                 placeholder="mail@site.com"
                                 className="pl-2"
                                 value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                required 
+                                onChange={(e) => {
+                                    setFormData({ ...formData, email: e.target.value });
+                                    setErrors(prev => ({ ...prev, email: "" }));
+                                }}
                             />
                         </label>
-                        <div className="validator-hint text-left ml-2 hidden">
-                            Enter valid email address
-                        </div>
+                        {errors.email && (
+                            <p className="text-left text-xs text-red-500 font-[Poppins] font-light mx-2 mt-1">
+                                {errors.email}
+                            </p>
+                        )}
                     </div>
 
                     {/* --- Password Field --- */}
@@ -118,8 +142,7 @@ export default function SignupPage() {
                                 placeholder="password"
                                 className="pl-2"
                                 value={formData.password}
-                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                required 
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })} 
                             />
                             {/* Toggle Password Visibility */}
                             <button 
@@ -134,8 +157,21 @@ export default function SignupPage() {
                                 )}
                             </button>
                         </label>
-                        <div className="validator-hint text-left ml-2 hidden">
-                            Must be more than 8 characters, including
+                        {/* Password Strength Meter - Only show if password is not empty */}
+                        <div
+                            className={`overflow-hidden transition-all duration-300 ease-in-out`}
+                            style={{
+                                maxHeight: formData.password ? "200px" : "0px", // adjust according to your PasswordStrengthMeter height
+                            }}
+                        >
+                            <div
+                                className="transform origin-top transition-transform duration-300 ease-in-out"
+                                style={{
+                                    transform: formData.password ? "scaleY(1)" : "scaleY(0)",
+                                }}
+                            >
+                                <PasswordStrengthMeter password={formData.password} />
+                            </div>
                         </div>
                     </div>
 

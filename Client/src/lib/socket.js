@@ -15,9 +15,9 @@ export const getSocket = (userId) => {
     // ---------------------------------------------
     // - Production: Use relative path ('/')
     // - Development: Use API base URL from environment variables
-    const URL = import.meta.env.MODE === 'development'
-        ? import.meta.env.VITE_BASE_URL   // local dev
-        : '/';
+    const URL = 
+        import.meta.env.VITE_API_BASE_URL ||  // local dev
+        'http://localhost:8080';
 
     // ---------------------------------------------
     // Create and configure the socket.io client

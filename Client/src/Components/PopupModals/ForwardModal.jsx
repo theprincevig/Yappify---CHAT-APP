@@ -2,27 +2,24 @@ import { useEffect, useState } from "react";
 import { useFriendStore } from "../../store/useFriendStore";
 import { useMessageStore } from "../../store/useMessageStore";
 import { Loader, Loader2, X } from "lucide-react";
+import { useThemeStore } from "../../store/useThemeStore";
 
 // =========================
-// 📤 ForwardModal Component
+// ForwardModal Component
 // =========================
 // Opens a modal to forward a message to one of your friends
 export default function ForwardModal({ messageId, onClose }) {
     // =========================
     //  Data Stores
     // =========================
-    const { friends, loading, getFriends } = useFriendStore(); // 👫 Friends data store
-    const { forwardMessage } = useMessageStore(); // 💬 Message actions
-
-    // =========================
-    //  Local State
-    // =========================
-    const [loadingForwardChatId, setLoadingForwardChatId] = useState(null); // Track loading state per friend
+    const { friends, loading, getFriends } = useFriendStore(); // Friends data store
+    const { currentChatId, isForwarding, forwardMessage } = useMessageStore(); // Message actions
+    const { theme } = useThemeStore();
 
     // =========================
     //  Effects
     // =========================
-    // ⏳ Fetch friends when modal opens
+    // Fetch friends when modal opens
     useEffect(() => {
         getFriends();
     }, [getFriends]);
@@ -30,13 +27,12 @@ export default function ForwardModal({ messageId, onClose }) {
     // =========================
     //  Handlers
     // =========================
-    // 🚀 Handle forwarding a message
-    async function handleForward(targetChatId) {
-        if (!targetChatId) return;
+    // Handle forwarding a message
+    async function handleForward(targetUserId) {
+        if (!targetUserId) return;
 
         try {
-            setLoadingForwardChatId(targetChatId);
-            await forwardMessage(messageId, targetChatId);
+            await forwardMessage(currentChatId, messageId, targetUserId);
             onClose(); // Close modal after successful forward
         } catch (err) {
             console.error("Failed to forward message", err);
@@ -55,19 +51,23 @@ export default function ForwardModal({ messageId, onClose }) {
     // =========================
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs px-2 sm:px-4"
+            className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs px-2 sm:px-4"
             onClick={onClose} // Close modal on outside click
         >
             <div
-                className="relative bg-black/80 w-full max-w-lg sm:rounded-2xl shadow-lg p-4 sm:p-6 max-h-[85vh] overflow-y-auto"
+                className={`
+                    relative w-full max-w-lg rounded-2xl shadow-lg 
+                    ${theme === "dark" ? "bg-black/60" : "bg-white/60"}
+                    p-4 sm:p-6 max-h-[85vh] overflow-y-auto
+                `}
                 onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
             >
-                {/* 🔹 Header */}
+                {/* Header */}
                 <h2 className="text-lg sm:text-xl font-semibold mb-4 opacity-80">
                     Forward Message
                 </h2>
 
-                {/* ❌ Close button */}
+                {/* Close button */}
                 <button
                     className="absolute top-3 right-3 sm:top-4 sm:right-4 opacity-70 hover:opacity-100 duration-200 cursor-pointer"
                     onClick={onClose}
@@ -75,18 +75,18 @@ export default function ForwardModal({ messageId, onClose }) {
                     <X size={22} />
                 </button>
 
-                {/* 📡 Loading state */}
+                {/* Loading state */}
                 {loading ? (
                     <div className="flex justify-center py-8">
                         <Loader2 size={32} className="animate-spin text-primary" />
                     </div>
                 ) : friends.length <= 1 ? (
-                    // ⚠️ No friends available
+                    // No friends available
                     <p className="text-sm text-center text-gray-400 font-[Poppins]">
                         No friends available to forward a message.
                     </p>
                 ) : (
-                    // ✅ Friend list
+                    // Friend list
                     <div className="space-y-3">
                         {friends.map((f) => (
                             <div
@@ -98,11 +98,11 @@ export default function ForwardModal({ messageId, onClose }) {
                                     <img
                                         src={f.profilePic || "/avatar.png"}
                                         alt={f.username}
-                                        className="size-10 rounded-full object-cover"
+                                        className="w-12 h-12 rounded-full object-cover"
                                     />
                                     <div>
                                         <p className="text-sm sm:text-base ml-2 uppercase font-semibold">
-                                            {f.fullName}
+                                            {f.username || f.fullName}
                                         </p>
                                     </div>
                                 </div>
@@ -111,10 +111,10 @@ export default function ForwardModal({ messageId, onClose }) {
                                 <div>
                                     <button
                                         className="btn btn-sm btn-primary flex items-center gap-2"
-                                        onClick={() => handleForward(f.chatId)}
-                                        disabled={loadingForwardChatId === f.chatId}
+                                        onClick={() => handleForward(f._id)}
+                                        disabled={isForwarding === f._id}
                                     >
-                                        {loadingForwardChatId === f.chatId ? (
+                                        {isForwarding === f._id ? (
                                             <Loader size={16} className="animate-spin" />
                                         ) : (
                                             "Forward"

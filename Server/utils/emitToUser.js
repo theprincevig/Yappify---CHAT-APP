@@ -1,4 +1,4 @@
-const { io, getReceiverSocketId } = require('../config/socket');
+const { io, getReceiverSocketId } = require("../config/socket.Config.js");
 
 /**
  * Emit an event to a specific user.
@@ -7,13 +7,13 @@ const { io, getReceiverSocketId } = require('../config/socket');
  * @param {Object} data - The payload to send with the event.
  */
 const emitToUser = (userId, event, data) => {
-    // Get all socket IDs associated with this user
-    const socketIds = getReceiverSocketId(userId);
+  // Get all socket IDs associated with this user
+  const socketIds = getReceiverSocketId(userId);
 
-    // Emit the event to each of the user's connected sockets
-    socketIds.forEach((id) => {
-        io.to(id).emit(event, data);
-    });
+  // Emit the event to each of the user's connected sockets
+  socketIds.forEach((id) => {
+    io.to(id).emit(event, data);
+  });
 };
 
 module.exports = emitToUser;

@@ -1,15 +1,15 @@
-// 🎨 ICONS
+// ICONS
 import { ArrowLeft } from "lucide-react";
 
-// 🏪 GLOBAL STORE
+// GLOBAL STORE
 import { useAuthStore } from "../../store/useAuthStore";
 
-// 🔗 ROUTING
+// ROUTING
 import { Link } from "react-router-dom";
 
 /**
  * ──────────────────────────────────────────────
- * 📦 ChatHeader Component
+ * ChatHeader Component
  * ──────────────────────────────────────────────
  * Displays the top bar in chat with:
  *   - Back button
@@ -18,7 +18,7 @@ import { Link } from "react-router-dom";
  * ──────────────────────────────────────────────
  */
 export default function ChatHeader({ selectedUser, setSelectedUser }) {
-    // 🟢 Get online users from global auth store
+    // Get online users from global auth store
     const { onlineUsers } = useAuthStore();
 
     return (
@@ -37,24 +37,24 @@ export default function ChatHeader({ selectedUser, setSelectedUser }) {
                 {/* ────────────── USER INFO ────────────── */}
                 <div className="flex items-center gap-2">
                     
-                    {/* 🖼️ AVATAR */}
+                    {/* AVATAR */}
                     <img
                         src={selectedUser.profilePic || "/avatar.png"}
                         alt={selectedUser.username}
                         className="w-9 h-9 rounded-full object-cover"
                     />
 
-                    {/* 👤 NAME & STATUS */}
+                    {/* NAME & STATUS */}
                     <div className="flex flex-col">
-                        {/* 🔗 USER PROFILE LINK */}
+                        {/* USER PROFILE LINK */}
                         <Link 
-                            to={`/chat/profile/${selectedUser._id}`} 
+                            to={`/users/${selectedUser._id}`} 
                             className="font-semibold"
                         >
                             {selectedUser.fullName || selectedUser.username}
                         </Link>
 
-                        {/* 🟢 ONLINE / OFFLINE STATUS */}
+                        {/* ONLINE / OFFLINE STATUS */}
                         <p className="text-xs ml-1 text-base-content/50 font-light myfont-AU-NSW">
                             {onlineUsers.includes(selectedUser._id) ? "Online" : "Offline"}
                         </p>

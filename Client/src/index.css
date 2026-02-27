@@ -1,5 +1,5 @@
 /* -------------------------------------------------- */
-/* 🌐 Import Fonts & Tailwind Plugins                 */
+/* Import Fonts & Tailwind Plugins                    */
 /* -------------------------------------------------- */
 @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@300..700&family=Kaushan+Script&family=Playwrite+AU+NSW:wght@100..400&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
 
@@ -11,15 +11,15 @@
 
 
 /* -------------------------------------------------- */
-/* ✨ Custom Utilities Layer                          */
+/* Custom Utilities Layer                             */
 /* -------------------------------------------------- */
 @layer utilities {
-  /* 📌 Badge for message reactions */
+  /* Badge for message reactions */
   .react-badge {
     @apply text-xs px-1 py-1 rounded-full cursor-pointer;
   }
 
-  /* 🎨 Custom font styles */
+  /* Custom font styles */
   .myfont-AU-NSW {
     font-family: 'Playwrite AU NSW', sans-serif;
   }
@@ -31,7 +31,7 @@
 
 
 /* -------------------------------------------------- */
-/* ⚡ Shimmer Effect (Loading Placeholder)            */
+/* Shimmer Effect (Loading Placeholder)               */
 /* -------------------------------------------------- */
 .shimmer {
   position: relative;
@@ -60,7 +60,7 @@
 
 
 /* -------------------------------------------------- */
-/* 🎵 Bounce-Once Animation (Looping)                 */
+/* Bounce-Once Animation (Looping)                    */
 /* -------------------------------------------------- */
 @keyframes bounce-once {
   0%, 100% {

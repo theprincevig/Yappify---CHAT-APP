@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { axiosInstance } from '../lib/axios';
 import { useAuthStore } from './useAuthStore';
+import { API_PATHS } from '../utils/apiPaths';
 
 /**
  * ============================
@@ -20,7 +21,6 @@ export const useFriendStore = create((set, get) => ({
     // STATE
     // -----------------------------------
     friends: [],                // List of current friends
-    // requests: [],               // Deprecated: use pendingRequests
     searchResult: null,         // Result of user search
     loading: false,             // Loading state for API actions
     pendingRequests: {          // Friend requests (sent & received)
@@ -28,10 +28,13 @@ export const useFriendStore = create((set, get) => ({
         received: []
     },
     isLoadingPending: false,    // Loading state for pending requests
+    hasNewPending: false,
+    lastSeenPendingAt: null,
 
     // -----------------------------------
     // API ACTIONS
     // -----------------------------------
+    setLastSeenPending: () => set({ lastSeenPendingAt: new Date().toISOString() }),
 
     /**
      * Fetches the user's friends list from the server.
@@ -39,7 +42,7 @@ export const useFriendStore = create((set, get) => ({
     getFriends: async () => {
         set({ loading: true });
         try {
-            const res = await axiosInstance.get("/chat/friend/list");
+            const res = await axiosInstance.get(API_PATHS.FRIENDS.GET_FRIENDS);
             set({ friends: res.data.friends || [] });
         } catch (error) {
             console.error("Error fetching friends:", error.response?.data?.error || error.message);
@@ -53,10 +56,10 @@ export const useFriendStore = create((set, get) => ({
     /**
      * Fetches all pending friend requests (sent & received).
      */
-    getPendingRequests: async () => {
+    getRequests: async () => {
         set({ isLoadingPending: true });
         try {
-            const res = await axiosInstance.get("/chat/friend/pending-requests");
+            const res = await axiosInstance.get(API_PATHS.FRIENDS.GET_REQUESTS);
             if (res.data?.success) {
                 set({ pendingRequests: res.data.requests });
             }
@@ -74,9 +77,16 @@ export const useFriendStore = create((set, get) => ({
     searchUser: async (username) => {
         set({ loading: true, searchResult: null });
         try {
-            const res = await axiosInstance.get(`/chat/friend/search?username=${username}`);
-            set({ searchResult: res.data.user });
-            return res.data.user;
+            const res = await axiosInstance.get(API_PATHS.FRIENDS.SEARCH(username));
+            const user = res.data.user;
+
+            set({ 
+                searchResult: {
+                    ...user,
+                    relationshipStatus: res.data.relationshipStatus
+                } 
+            });
+            return user;
         } catch (error) {
             console.error("Search error:", error.response?.data?.error || error.message);
             throw new Error(error.response?.data?.error || "Something went wrong");
@@ -88,9 +98,9 @@ export const useFriendStore = create((set, get) => ({
     /**
      * Sends a friend request to a user by ID.
      */
-    sendRequest: async (id) => {
+    sendRequest: async (userId) => {
         try {
-            const res = await axiosInstance.post(`/chat/friend/request/${id}`);
+            const res = await axiosInstance.post(API_PATHS.FRIENDS.SEND_REQUEST(userId));
             return res.data.message;
         } catch (error) {
             console.error("Send request error:", error.response?.data?.error || error.message);
@@ -101,10 +111,10 @@ export const useFriendStore = create((set, get) => ({
     /**
      * Cancels a previously sent friend request.
      */
-    cancelRequest: async (id) => {
+    cancelRequest: async (userId) => {
         try {
-            const res = await axiosInstance.post(`/chat/friend/cancel/${id}`);
-            await get().getPendingRequests();
+            const res = await axiosInstance.delete(API_PATHS.FRIENDS.CANCEL_REQUEST(userId));
+            await get().getRequests();
             return res.data.message;
         } catch (error) {
             console.error("Cancel request error:", error.response?.data?.error || error.message);
@@ -115,10 +125,11 @@ export const useFriendStore = create((set, get) => ({
     /**
      * Accepts a received friend request.
      */
-    acceptRequest: async (id) => {
+    acceptRequest: async (userId) => {
         try {
-            const res = await axiosInstance.post(`/chat/friend/accept/${id}`);
+            const res = await axiosInstance.patch(API_PATHS.FRIENDS.ACCEPT_REQUEST(userId));
             await get().getFriends();
+            
             return res.data.message;
         } catch (error) {
             console.error("Accept request error:", error.response?.data?.error || error.message);
@@ -129,10 +140,10 @@ export const useFriendStore = create((set, get) => ({
     /**
      * Rejects a received friend request.
      */
-    rejectRequest: async (id) => {
+    rejectRequest: async (userId) => {
         try {
-            const res = await axiosInstance.post(`/chat/friend/reject/${id}`);
-            await get().getPendingRequests();
+            const res = await axiosInstance.delete(API_PATHS.FRIENDS.REJECT_REQUEST(userId));
+            await get().getRequests();
             return res.data.message;
         } catch (error) {
             console.error("Reject request error:", error.response?.data?.error || error.message);
@@ -143,9 +154,9 @@ export const useFriendStore = create((set, get) => ({
     /**
      * Removes a friend from the user's friends list.
      */
-    removeFriend: async (id) => {
+    removeFriends: async (userId) => {
         try {
-            const res = await axiosInstance.post(`/chat/friend/remove/${id}`);
+            const res = await axiosInstance.delete(API_PATHS.FRIENDS.REMOVE_FRIEND(userId));
             await get().getFriends();
             return res.data.message;
         } catch (error) {
@@ -157,9 +168,9 @@ export const useFriendStore = create((set, get) => ({
     /**
      * Checks the relationship status with a user by ID.
      */
-    checkStatus: async (id) => {
+    checkStatus: async (userId) => {
         try {
-            const res = await axiosInstance.get(`/chat/friend/status/${id}`);
+            const res = await axiosInstance.get(API_PATHS.FRIENDS.STATUS(userId));
             return res.data;
         } catch (error) {
             console.error("Check status error:", error.response?.data?.error || error.message);
@@ -195,6 +206,7 @@ export const useFriendStore = create((set, get) => ({
                         { _id: requestId, sender }
                     ]
                 },
+
                 // Update searchResult if relevant
                 searchResult: state.searchResult?._id === sender._id
                     ? { ...state.searchResult, relationshipStatus: "pending" }
@@ -203,27 +215,27 @@ export const useFriendStore = create((set, get) => ({
         });
 
         // --- Friend request accepted ---
-        socket.on("friendRequestAccepted", ({ friend }) => {
+        socket.on("friendRequestAccepted", ({ friend, requestId }) => {
             console.log("[FRIEND REQUEST ACCEPTED]", { friend });
             set(state => ({
                 friends: [...state.friends, friend],
                 pendingRequests: {
                     ...state.pendingRequests,
-                    sent: state.pendingRequests.sent.filter(r => r._id !== friend._id)
+                    sent: state.pendingRequests.sent.filter(r => r._id !== requestId)
                 },
                 searchResult: state.searchResult?._id === friend._id
-                    ? { ...state.searchResult, relationshipStatus: "friends" }
+                    ? { ...state.searchResult, relationshipStatus: "accepted" }
                     : state.searchResult
             }));
         });
 
         // --- Friend request rejected ---
-        socket.on("friendRequestRejected", ({ userId }) => {
+        socket.on("friendRequestRejected", ({ userId, requestId }) => {
             console.log("[FRIEND REQUEST REJECTED]", { userId });
             set(state => ({
                 pendingRequests: {
                     ...state.pendingRequests,
-                    sent: state.pendingRequests.sent.filter(r => r._id !== userId)
+                    sent: state.pendingRequests.sent.filter(r => r._id !== requestId)
                 },
                 searchResult: state.searchResult?._id === userId
                     ? { ...state.searchResult, relationshipStatus: "none" }
@@ -257,7 +269,7 @@ export const useFriendStore = create((set, get) => ({
             "friendRemoved"
         ].forEach(event => {
             socket.off(event);
-            console.log(`🔌 [SOCKET OFF ${event}]`);
+            console.log(`[SOCKET OFF ${event}]`);
         });
     },
 

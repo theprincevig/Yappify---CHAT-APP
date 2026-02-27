@@ -1,5 +1,5 @@
 // ──────────────────────────────
-// 🌟 Core Components & Pages
+// Core Components & Pages
 // ──────────────────────────────
 import Navbar from './Components/Navbar';
 import HomePage from './Pages/HomePage';
@@ -9,47 +9,49 @@ import SettingsPage from './Pages/SettingsPage';
 import ProfilePage from './Pages/ProfilePage/Profile';
 import AddFriendPage from './Pages/AddFriendPage';
 import ViewOtherProfile from './Pages/ProfilePage/ViewOtherProfile';
+import ChangePasswordPage from './Pages/PasswordPage/ChangePasswordPage';
 
 // ──────────────────────────────
-// 🎉 Popup Modals
+// Popup Modals
 // ──────────────────────────────
 import FunModeModal from './Components/PopupModals/FunModeModal';
 
 // ──────────────────────────────
-// 📚 Libraries & State Stores
+// Libraries & State Stores
 // ──────────────────────────────
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/useAuthStore';
 import { useThemeStore } from './store/useThemeStore';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { LoaderCircle } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 
 function App() {
   // ──────────────────────────────
-  // 🔑 Auth State & Actions
+  // Auth State & Actions
   // ──────────────────────────────
-  const { authUser, checkAuth, isCheckingAuth, onlineUsers } = useAuthStore();
+  const {
+    authUser,
+    session,
+    isCheckingAuth,
+    showFunModePopup,
+    setFunModePopup,    
+  } = useAuthStore();
 
   // ──────────────────────────────
-  // 🎉 FunMode Modal State
-  // ──────────────────────────────
-  const [showFunModePopup, setShowFunModePopup] = useState(false);
-
-  // ──────────────────────────────
-  // 🎨 Theme Store
+  // Theme Store
   // ──────────────────────────────
   const { setTheme } = useThemeStore();
 
   // ──────────────────────────────
-  // 🚦 Check Auth on App Load
+  // Check Auth on App Load
   // ──────────────────────────────
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+    session();
+  }, [session]);
 
   // ──────────────────────────────
-  // 🌗 Apply Saved Theme (Light/Dark)
+  // Apply Saved Theme (Light/Dark)
   // ──────────────────────────────
   useEffect(() => {
     const savedTheme = localStorage.getItem("chat-theme") || "light";
@@ -57,18 +59,18 @@ function App() {
   }, [setTheme]);
 
   // ──────────────────────────────
-  // 🎉 Show FunMode Popup After Signup
+  // Show FunMode modal if eligible
   // ──────────────────────────────
   useEffect(() => {
-    if (authUser && !authUser.funMode && !authUser.funModeLocked) {
-      setShowFunModePopup(true);
-    } else {
-      setShowFunModePopup(false);
+    if (!authUser) return;
+
+    if (!authUser.funModeLocked && authUser.funMode === null) {
+      setFunModePopup(true);
     }
-  }, [authUser]);
+  }, [authUser, setFunModePopup]);
 
   // ──────────────────────────────
-  // ⏳ Loader While Checking Auth
+  // Loader While Checking Auth
   // ──────────────────────────────
   if (isCheckingAuth && !authUser) {
     return (
@@ -81,48 +83,42 @@ function App() {
   return (
     <>
       {/* ──────────────────────────────
-          🧭 Navbar (Always Visible)
+          Navbar (Always Visible)
       ────────────────────────────── */}
       <Navbar />
 
       {/* ──────────────────────────────
-          🔀 App Routes
+          App Routes
       ────────────────────────────── */}
       <Routes>
-        {/* 🏠 Default: Login or Redirect to Chat */}
-        <Route path='/' element={!authUser ? <LoginPage /> : <Navigate to="/chat" />} />
+        <Route path='/' element={!authUser ? <LoginPage /> : <Navigate to="/chats" />} />  {/* Default: Login or Redirect to Chat */}
+        <Route path='/login' element={!authUser ? <Navigate to="/" /> : <Navigate to="/chats" />} /> {/* Login: Always Redirect to Home */}
+        <Route path='/signup' element={!authUser ? <SignupPage /> : <Navigate to="/chats" />} /> {/* Signup: Show Only If Not Authenticated */}
 
-        {/* 🚪 Login: Always Redirect to Home */}
-        <Route path='/login' element={<Navigate to="/" />} />
+        {/* Chat: only users logged-in */}
+        <Route path='/chats' element={authUser ? <HomePage /> : <Navigate to="/" />} />
 
-        {/* 📝 Signup: Show Only If Not Authenticated */}
-        <Route path='/signup' element={!authUser ? <SignupPage /> : <Navigate to="/chat" />} />
-
-        {/* 💬 Chat: Protected Route */}
-        <Route path='/chat' element={authUser ? <HomePage /> : <Navigate to="/" />} />
-
-        {/* 👤 Profile: Protected Route */}
+        {/* Profile: only users logged-in */}
         <Route path='/profile' element={authUser ? <ProfilePage /> : <Navigate to="/" />} />
-
-        {/* ➕ Add Friend: Protected Route */}
         <Route path='/addFriend' element={authUser ? <AddFriendPage /> : <Navigate to="/" />} />
 
-        {/* ⚙️ Settings: Public Route */}
+        {/* Settings: Public Route */}
         <Route path='/settings' element={<SettingsPage />} />
 
-        {/* 👀 View Other Profile: Protected Route */}
-        <Route path='/chat/profile/:profileId' element={authUser ? <ViewOtherProfile /> : <Navigate to="/" />} />
+        {/* View Other Profile: Protected Route */}
+        <Route path='/users/:userId' element={authUser ? <ViewOtherProfile /> : <Navigate to="/" />} />
+
+        {/* Password: change */}
+        <Route path='/change-password' element={<ChangePasswordPage />} />
       </Routes>
 
       {/* ──────────────────────────────
-          🎉 FunMode Modal (First-Time Only)
+        FunMode Modal (First-Time Only)
       ────────────────────────────── */}
-      {!isCheckingAuth && authUser && authUser.funMode === null && !authUser.funModeLocked && (
-        <FunModeModal onClose={() => setShowFunModePopup(false)} />
-      )}
+      {showFunModePopup && <FunModeModal onClose={() => setFunModePopup(false)} />}
 
       {/* ──────────────────────────────
-          🔔 Toast Notifications
+          Toast Notifications
       ────────────────────────────── */}
       <Toaster position='bottom-right' />
     </>

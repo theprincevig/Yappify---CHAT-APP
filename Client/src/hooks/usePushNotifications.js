@@ -11,7 +11,7 @@ export default function usePushNotifications() {
   const [error, setError] = useState(null);
 
   // --- Auth Store ---
-  const { authUser, sendSubscriptionToServer } = useAuthStore();
+  const { authUser, saveSubscription } = useAuthStore();
 
   /**
    * Subscribe the user to push notifications.
@@ -23,7 +23,7 @@ export default function usePushNotifications() {
 
       // --- Fun Mode: Notifications Always ON ---
       if (authUser.funMode === "fun") {
-        console.log("🎉 Fun mode: notifications always ON, skipping subscription");
+        console.log("Fun mode: notifications always ON, skipping subscription");
         setIsSubscribed(true);
         return;
       }
@@ -42,7 +42,7 @@ export default function usePushNotifications() {
       let registration;
       try {
         registration = await navigator.serviceWorker.ready;
-        console.log("✅ Service Worker ready:", registration);
+        console.log("Service Worker ready:", registration);
       } catch (err) {
         throw new Error("Service Worker not ready yet");
       }
@@ -50,14 +50,14 @@ export default function usePushNotifications() {
       // --- Check Existing Subscription ---
       const existingSubscription = await registration.pushManager.getSubscription();
       if (existingSubscription) {
-        console.log("✅ Already subscribed:", existingSubscription);
+        console.log("Already subscribed:", existingSubscription);
         setIsSubscribed(true);
         return;
       }
 
       // --- Request Notification Permission ---
       const permission = await Notification.requestPermission();
-      console.log("🔔 Permission result:", permission);
+      console.log("Permission result:", permission);
       if (permission !== "granted") throw new Error("Notification permission denied");
 
       // --- Subscribe to Push Notifications ---
@@ -70,13 +70,13 @@ export default function usePushNotifications() {
       });
 
       // --- Send Subscription to Server ---
-      await sendSubscriptionToServer(JSON.parse(JSON.stringify(subscription)));
-      console.log("📩 Subscription completed:", subscription);
+      await saveSubscription(JSON.parse(JSON.stringify(subscription)));
+      console.log("Subscription completed:", subscription);
       setIsSubscribed(true);
 
     } catch (err) {
       // --- Error Handling ---
-      console.error("❌ Subscription error:", err);
+      console.error("Subscription error:", err);
       setError(err.message);
     }
   };

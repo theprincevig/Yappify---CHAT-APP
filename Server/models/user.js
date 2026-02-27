@@ -6,9 +6,19 @@ const passportLocalMongoose = require('passport-local-mongoose'); // Passport pl
 // User Schema
 // --------------------
 const userSchema = new Schema({
+    username: {
+        type: String,
+        required: true,
+        unique: true,
+        lowercase: true,
+        trim: true
+    },
     email: {
         type: String,                             // User's email
         required: true,                           // Email is mandatory for registration
+        lowercase: true,                         // Store email in lowercase
+        unique: true,                            // Ensure email uniqueness
+        trim: true
     },
     profilePic: {
         type: String,                             // URL of profile picture

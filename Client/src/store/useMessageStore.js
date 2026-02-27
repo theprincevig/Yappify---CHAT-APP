@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
-import { useAuthStore } from "./useAuthStore"; // ✅ Auth store import
+import { useAuthStore } from "./useAuthStore"; // Auth store import
+import { API_PATHS } from "../utils/apiPaths";
 
 /**
  * ============================
@@ -17,43 +18,27 @@ export const useMessageStore = create((set, get) => ({
   //           STATE VARIABLES
   // --------------------------------------
   messages: [],           // All messages for current chat
-  loading: false,         // Loading state for messages
-  error: null,            // Error state
+  chats: [],              // fixes chat updated bugs
+  users: [],              // List of sidebar users/chats
+  hasNewMessage: {},
+  typingUser: null,       // User currently typing in chat
+
   currentChatId: null,    // Currently open chat ID
+  selectedUser: null,     // Currently selected user in sidebar
   replyingTo: null,       // Message being replied to
 
-  // --- Sidebar state ---
-  users: [],              // List of sidebar users/chats
-  selectedUser: null,     // Currently selected user in sidebar
-  typingUser: null,       // User currently typing in chat
-  unreadCounts: {},       // Unread message counts per chat
+  isForwarding: null,
+  loading: false,         // Loading state for messages
+  error: null,            // Error state
 
   // --------------------------------------
-  //           STATE MUTATORS
+  //           SIMPLE MUTATORS
   // --------------------------------------
 
   setSelectedUser: (selectedUser) => set({ selectedUser }),
   setUsers: (users) => set({ users }),
-
   setReplyingTo: (message) => set({ replyingTo: message }),
   clearReplyingTo: () => set({ replyingTo: null }),
-
-  setUnreadCounts: (counts) => set({ unreadCounts: counts }),
-
-  incrementUnreadCount: (chatId) => {
-    set((state) => ({
-      unreadCounts: {
-        ...state.unreadCounts,
-        [chatId]: (state.unreadCounts[chatId] || 0) + 1,
-      }
-    }));
-  },
-
-  resetUnreadCount: (chatId) => {
-    set((state) => ({
-      unreadCounts: { ...state.unreadCounts, [chatId]: 0 }
-    }));
-  },
 
   // --------------------------------------
   //         CHAT & MESSAGE ACTIONS
@@ -63,7 +48,15 @@ export const useMessageStore = create((set, get) => ({
    * Set current chat and fetch its messages.
    */
   setCurrentChat: async (chatId, user) => {
-    set({ currentChatId: chatId, selectedUser: user, messages: [] });
+    set((state) => ({
+      currentChatId: chatId,
+      selectedUser: user,
+      messages: [],
+      hasNewMessage: {
+        ...state.hasNewMessage,
+        [chatId]: false,
+      }
+    }));
 
     if (chatId) {
       await get().getMessages(chatId);
@@ -73,17 +66,19 @@ export const useMessageStore = create((set, get) => ({
   /**
    * Fetch sidebar users/chats.
    */
-  getUsersForSidebar: async () => {
+  getChats: async () => {
     const { authUser, isCheckingAuth } = useAuthStore.getState();
 
     if (isCheckingAuth || !authUser?._id) {
-      // ⛔ Prevent API call if auth not ready or user not logged in
+      // Prevent API call if auth not ready or user not logged in
       set({ users: [] });
       return;
     }
 
+    set({ loading: true });
+
     try {
-      const res = await axiosInstance.get("/chat");
+      const res = await axiosInstance.get(API_PATHS.CHATS.GET_CHATS);
 
       if (res.data.success) {
         set({ users: res.data.users });
@@ -94,40 +89,46 @@ export const useMessageStore = create((set, get) => ({
         set({ users: [] });
       } else {
         toast.error(err.response?.data?.error || "Failed to load sidebar users");
+        throw err;
       }
+    } finally {
+      set({ loading: false });
     }
   },
 
-  /**
-   * Fetch messages for a chat.
-   */
+  /* ===============================
+        FETCH MESSAGES
+  =============================== */
   getMessages: async (chatId, limit = 20, skip = 0) => {
     set({ loading: true, error: null });
     try {
-      const res = await axiosInstance.get(`/chat/${chatId}/message`, {
+      const res = await axiosInstance.get(API_PATHS.CHATS.MESSAGES(chatId), {
         params: { limit, skip },
       });
 
       if (res.data.success) {
         set((state) => {
+          const existingIds = new Set(
+            state.messages.map((m) => m._id.toString())
+          );
+
           // Merge while avoiding duplicates
-          const mergedMessages = skip === 0
+          const merged = skip === 0
             ? res.data.messages
             : [
                 ...state.messages,
                 ...res.data.messages.filter(
-                  (m) => !state.messages.some((msg) => msg._id === m._id)
+                  (m) => !existingIds.has(m._id.toString())
                 ),
               ];
 
           // Sort chronologically (oldest → newest)
-          const sortedMessages = mergedMessages.sort(
+          const sorted = [...merged].sort(
             (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
           );
 
           return {
-            ...state,
-            messages: sortedMessages,
+            messages: sorted,
             currentChatId: chatId,
             loading: false,
           };
@@ -139,96 +140,86 @@ export const useMessageStore = create((set, get) => ({
         loading: false,
       });
       toast.error(err.response?.data?.error || "Failed to load messages");
+      throw err;
     }
   },
 
-  /**
-   * Fetch unread message counts for all chats.
-   */
-  getUnreadCounts: async () => {
-    const { authUser, isCheckingAuth } = useAuthStore.getState();
-
-    if (isCheckingAuth || !authUser?._id) {
-      console.log("⛔ Skipping unread counts fetch - no authUser");
-      return;
-    }
-    
-    try {
-      const res = await axiosInstance.get("/chat/unread-counts");
-      if (res.data.success) set({ unreadCounts: res.data.unreadCounts });
-
-    } catch (err) {
-      if (err.response?.status === 401) {        
-        set({ users: [] });
-      } else {
-        toast.error(err.response?.data?.error || "Failed to fetch unread counts");
-      }      
-    }
-  },
-
-  /**
-   * Send a new message (text/media/reply).
-   */
+  /* ===============================
+        SEND MESSAGE
+  =============================== */
   sendMessage: async (content, media = null, targetUserId = null) => {
-    const { currentChatId, users, selectedUser, replyingTo } = get();
+    const { currentChatId, replyingTo } = get();
+    const { connectedSocket: socket } = useAuthStore.getState();
 
     if (!content && !media)
       return toast.error("Message content or media is required");
-    if (!currentChatId && !targetUserId)
-      return toast.error("Select a user to chat with");
 
     try {
+      let chatId = currentChatId;
+
+      // If chat doesn't exist, create it first
+      if (!chatId && targetUserId) {
+        const chatRes = await axiosInstance.post(
+          API_PATHS.CHATS.CREATE_CHAT,
+          { targetUserId }
+        );
+
+        chatId = chatRes.data.chatId;
+        socket?.emit("joinChats", [chatId]);
+      }
+
+      if (!chatId)
+        return toast.error("Chat not found");
+
       const formData = new FormData();
       if (content) formData.append("content", content);
       if (media) formData.append("media", media);
-      if (targetUserId) formData.append("targetUserId", targetUserId);
       if (replyingTo?._id) formData.append("replyTo", replyingTo._id);
 
-      const endpoint = currentChatId
-        ? `/chat/${currentChatId}/message`
-        : `/chat/${targetUserId}/message`;
-
-      const res = await axiosInstance.post(endpoint, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      const res = await axiosInstance.post(
+        API_PATHS.CHATS.MESSAGES(chatId),
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" },
       });
 
       if (res.data.success) {
         const newMessage = res.data.message;
-        const chatId = res.data.chatId;
 
-        set((state) => ({
-          messages: [...state.messages, newMessage],
-          currentChatId: chatId,
-          selectedUser:
-            state.selectedUser?._id === targetUserId
-              ? state.selectedUser
-              : users.find((u) => u._id === targetUserId) || state.selectedUser,
-        }));
+        set((state) => {
+          const exists = state.messages.some(
+            m => m._id.toString() === newMessage._id.toString()
+          );
+
+          if (exists) return state;
+
+          return {
+            messages: [...state.messages, newMessage],
+            currentChatId: chatId,
+          };
+        });
 
         set({ replyingTo: null });
-
-        // If new chat, refresh sidebar users
-        if (targetUserId && !currentChatId) {
-          await get().getUsersForSidebar();
-        }
+        await get().getChats();
+        
       }
     } catch (err) {
       toast.error(err.response?.data?.error || "Failed to send message");
+      throw err;
     }
   },
 
-  /**
-   * Delete a message.
-   */
-  deleteMessage: async (messageId) => {
+  /* ===============================
+        DELETE MESSAGE
+  =============================== */
+  deleteMessage: async (chatId, messageId) => {
     try {
-      const res = await axiosInstance.delete(`/chat/message/${messageId}`);
+      const res = await axiosInstance.delete(API_PATHS.CHATS.DELETE_MESSAGE(chatId, messageId));
 
       if (res.data.success) {
         set((state) => ({
           messages: state.messages.map((msg) =>
             msg._id === messageId
-              ? { ...msg, deleted: true, content: "This message was deleted..." }
+              ? { ...msg, deleted: true, content: "This message was deleted" }
               : msg
           ),
         }));
@@ -236,54 +227,60 @@ export const useMessageStore = create((set, get) => ({
       }
     } catch (err) {
       toast.error(err.response?.data?.error || "Failed to delete message");
+      throw err;
     }
   },
 
-  /**
-   * React to a message with emoji.
-   */
-  reactToMessage: async (messageId, emoji) => { 
+  /* ===============================
+        REACT MESSAGE
+  =============================== */
+  reactToMessage: async (chatId, messageId, emoji) => { 
     try { 
-      const res = await axiosInstance.post(`/chat/message/${messageId}/react`, { emoji });
+      await axiosInstance.post(
+        API_PATHS.CHATS.UPSERT_REACTION(chatId, messageId),
+        { emoji }
+      );
+      // No manual state update here.
+      // Socket will handle it via "messageReacted"
 
-      if (res.data.success) {
-        set((state) => ({ 
-          messages: state.messages.map((msg) => 
-            msg._id === messageId 
-            ? res.data.message 
-            : msg 
-          ), 
-        })); 
-      }
     } catch (err) {
-      toast.error(err.response?.data?.error || "Failed to react to message"); 
+      toast.error(err.response?.data?.error || "Failed to react to message");
+      throw err;
     } 
   },
   
-  /**
-   * Forward a message to another chat.
-   */
-  forwardMessage: async (messageId, targetChatId) => {
+  /* ===============================
+        FORWARD MESSAGE
+  =============================== */
+  forwardMessage: async (chatId, messageId, targetUserId) => {
+    set({ isForwarding: targetUserId });
     try {
-      const res = await axiosInstance.post(`/chat/message/${messageId}/forward`, { targetChatId });
+      const res = await axiosInstance.post(
+        API_PATHS.CHATS.FORWARD(chatId, messageId),
+        { targetUserId }
+      );
       
       if (res.data.success) {
         toast.success("Message forwarded"); 
       }
     } catch (err) {
       toast.error(err.response?.data?.error || "Failed to forward message");
+      throw err;
+    } finally {
+      set({ isForwarding: null });
     }
   },
   
-  /**
-   * Mark all messages in a chat as read.
-   */
-  markMessagesAsRead: async (chatId) => {
+  /* ===============================
+        READ MESSAGE
+  =============================== */
+  readStatus: async (chatId) => {
     try {
-      await axiosInstance.put(`/chat/message/mark-read/${chatId}`);
+      await axiosInstance.patch(API_PATHS.CHATS.READ_STATUS(chatId));
       // No manual store update; socket "messagesRead" event will handle it
     } catch (err) {
       toast.error( err.response?.data?.error || "Failed to mark messages as read" );
+      throw err;
     }
   },
 
@@ -294,63 +291,98 @@ export const useMessageStore = create((set, get) => ({
   /**
    * Initialize all socket event listeners for real-time updates.
    */
-  initializeSocketListeners: (allChatIds = []) => {
+  initializeSocketListeners: (chatIds = []) => {
     get().disconnectSocketListeners();
-    const { connectedSocket: socket } = useAuthStore.getState(); // ✅ Get live socket
+    const { connectedSocket: socket } = useAuthStore.getState(); // Get live socket
     if (!socket) return;
 
     // Join all chat rooms for real-time events
-    if (Array.isArray(allChatIds) && allChatIds.length > 0) {
-      console.log("📌 Joining chat room:", allChatIds);
-      socket.emit("joinChats", allChatIds);
+    if (Array.isArray(chatIds) && chatIds.length > 0) {
+      console.log("Joining chat room:", chatIds);
+      socket.emit("joinChats", chatIds);
     }
 
     // --- New message received ---
     socket.on("newMessage", (newMessage) => {
-      const { currentChatId, messages } = get();
+      set((state) => {
+        const chatId = newMessage.chat?._id || newMessage.chat;
+        const isActiveChat = 
+            chatId?.toString() === state.currentChatId?.toString();
+
+        if (isActiveChat) {
+          const existing = state.messages.findIndex(
+            m => m._id.toString() === newMessage._id.toString()
+          );
+
+          let updatedMessages;
+
+          if (existing !== -1) {
+            updatedMessages = state.messages.map((m) => 
+              m._id.toString() === newMessage._id.toString() 
+                ? newMessage 
+                : m
+            );
+
+          } else {
+            updatedMessages = [...state.messages, newMessage];
+          }
+
+          const sortedMessages = [...updatedMessages].sort(
+            (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+          );
+
+          return {
+            messages: sortedMessages,
+          };
+        }
+
+        return {
+          hasNewMessage: {
+            ...state.hasNewMessage,
+            [chatId]: true,
+          },
+        };
+      });
+
+      const { currentChatId } = get();
       const chatId = newMessage.chat?._id || newMessage.chat;
 
-      if (chatId === currentChatId) {
-        const exists = messages.some((m) => m._id === newMessage._id);
+      if (chatId?.toString() === currentChatId?.toString()) {
+        const currentUserId = useAuthStore.getState().authUser._id;
 
-        set((state) => ({
-          messages: exists
-            ? state.messages.map((m) => (m._id === newMessage._id ? { ...newMessage } : m))
-            : [...state.messages, newMessage], // No sorting if server sends in order
-        }));
-
-        // Reset unread count immediately since we’re viewing it
-        get().resetUnreadCount(chatId);
-
-        // Mark as read in backend
-        get().markMessagesAsRead(chatId);
-      } else {
-        // Not open → increment unread
-        get().incrementUnreadCount(chatId);
+        if (!newMessage.readBy?.some(
+          id => id.toString() === currentUserId.toString()
+        )) {
+          get().readStatus(chatId);
+        }
       }
     });
 
     // --- Chat updated (e.g. new participant) ---
     socket.on("chatUpdated", (updatedChat) => {
       try {
-        const currentUserId = useAuthStore.getState().authUser?._id?.toString();
-        if (!currentUserId) return;
+        set((state) => {
+          const exists = state.chats.findIndex(
+            (c) => c._id.toString() === updatedChat._id.toString()
+          );
 
-        const chatId = updatedChat._id?.toString?.() || updatedChat._id;
+          let updatedChats;
 
-        const otherParticipant = (updatedChat.participants || []).find(
-          (p) => p._id?.toString?.() !== currentUserId
-        );
+          if (exists !== -1) {
+            // Update existing chat
+            updatedChats = state.chats.map((c) =>
+              c._id.toString() === updatedChat._id.toString() 
+                ? updatedChat 
+                : c
+            );
 
-        if (otherParticipant) {
-          set((state) => ({
-            users: state.users.map((u) => 
-              u._id?.toString?.() === otherParticipant._id?.toString?.()
-              ? { ...u, chatId }
-              : u
-            )
-          }));
-        }
+          } else {
+            // Insert new chat
+            updatedChats = [updatedChat, ...state.chats];
+          }
+
+          return { chats: updatedChats };
+        });
       } catch (err) {
         console.error("chatUpdated handler error:", err);
       }
@@ -359,7 +391,7 @@ export const useMessageStore = create((set, get) => ({
     // --- Message deleted ---
     socket.on("messageDeleted", ({ messageId, chatId }) => {
       const { currentChatId } = get();
-      console.log("🗑️ [FRONTEND RECEIVED messageDeleted]", { messageId, chatId });
+      console.log("[FRONTEND RECEIVED messageDeleted]", { messageId, chatId });
 
       if (!currentChatId || currentChatId.toString() !== chatId?.toString()) return;
 
@@ -376,7 +408,9 @@ export const useMessageStore = create((set, get) => ({
     socket.on("messageReacted", ({ messageId, reactions }) => {
       set((state) => ({
         messages: state.messages.map((msg) =>
-          msg._id === messageId ? { ...msg, reactions } : msg
+          msg._id === messageId 
+            ? { ...msg, reactions } 
+            : msg
         ),
       }));
     });
@@ -392,10 +426,18 @@ export const useMessageStore = create((set, get) => ({
 
       set((state) => ({
         messages: state.messages.map((msg) => {
-          if ((msg.chat?._id || msg.chat) !== chatId) return msg;
+          if (
+            (msg.chat?._id || msg.chat).toString() !== chatId.toString()
+          ) return msg;
+          
+          const normalizedReadBy = (msg.readBy || []).map(r => r.toString());
+          if (normalizedReadBy.includes(readerId.toString())) {
+            return msg;
+          }
+
           return {
             ...msg,
-            readBy: [...new Set([...(msg.readBy ?? []), readerId])],
+            readBy: [...normalizedReadBy, readerId.toString()],
           };
         }),
       }));
@@ -403,36 +445,46 @@ export const useMessageStore = create((set, get) => ({
 
     // --- Message forwarded ---
     socket.on("messageForwarded", (forwardedMessage) => {
-      const { currentChatId } = get();
-      if ((forwardedMessage.chat?._id || forwardedMessage.chat) === currentChatId) {
-        // Ensure forwardedFrom.sender always exists
-        if (forwardedMessage.forwardedFrom && !forwardedMessage.forwardedFrom.sender) {
-          forwardedMessage.forwardedFrom.sender = { username: "Unknown", fullName: "Unknown" };
-        }
+      const chatId = 
+        typeof forwardedMessage.chat === "string"
+          ? forwardedMessage.chat
+          : forwardedMessage.chat?._id;
 
-        set((state) => {
-          const exists = state.messages.some((m) => m._id === forwardedMessage._id);
-          return {
-            messages: exists
-              ? state.messages.map((m) =>
-                  m._id === forwardedMessage._id ? forwardedMessage : m
-                )
-              : [...state.messages, forwardedMessage],
-          };
-        });
-      }
+      set((state) => {
+        const forwarded = {
+          ...forwardedMessage,
+          forwardedFrom: forwardedMessage.forwardedFrom
+            ? {
+              ...forwardedMessage.forwardedFrom,
+              sender: forwardedMessage.forwardedFrom.sender || {
+                username: "Unknown",
+                fullName: "Unknown"
+              }
+            }
+            : null,
+        };
+
+        const exists = state.messages.some((m) => m._id === forwarded._id);
+        return {
+          messages: exists
+            ? state.messages.map((m) =>
+                m._id === forwarded._id ? forwarded : m
+              )
+            : [...state.messages, forwarded],
+        };
+      });
     });
 
     // --- Typing indicator ---
     socket.on("typing", ({ chatId, senderId }) => {
-      const { currentChatId, users, selectedUser } = get();
-      if (chatId === currentChatId) {
-        const user =
-          users.find((u) => u._id === senderId) ||
-          (selectedUser && selectedUser._id === senderId ? selectedUser : null);
+      const { currentChatId, users } = get();
+      if (chatId?.toString() === currentChatId?.toString()) {
+        const user = users.find(
+          (u) => u._id?.toString() === senderId?.toString()
+        );
 
         if (user) {
-          set({ typingUser: { ...user, _id: user._id || senderId } });
+          set({ typingUser: user });
         }
       }
     });
@@ -466,7 +518,7 @@ export const useMessageStore = create((set, get) => ({
 
     events.forEach((event) => {
       socket.off(event);
-      console.log(`🔌 [SOCKET OFF ${event}]`);
+      console.log(`[SOCKET OFF ${event}]`);
     });
   },
 

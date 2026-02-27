@@ -1,4 +1,4 @@
-const webpush = require('../config/webPush');
+const webpush = require('../config/webPush.Config');
 const User = require('../models/user');
 
 /**
@@ -19,23 +19,21 @@ module.exports.sendNotificationToUser = async (userId, payload) => {
 
         const subscription = user.notificationSubscription;
         // Check if the user has a valid push subscription
-        if (!subscription || !subscription.endpoint) {
+        if (!subscription?.endpoint) {
             console.warn(`Push skipped: No valid subscription for user ${user.username || userId}`);
             return;
         }
 
         const { funMode, notificationsEnabled } = user;
 
-        // Only send notifications if:
-        // 1. User is in "fun" mode (always on)
-        // 2. User is in "control" mode and has notifications enabled
-        if (funMode === 'fun' || (funMode === 'control' && notificationsEnabled)) {
-            try {
-                await webpush.sendNotification(subscription, JSON.stringify(payload));
-            } catch (error) {
-                console.error(`Push Error for user ${user.username || userId}:`, error);
-            }
-        }
+        const canNotify = 
+            funMode === "fun" ||
+            (funMode === "control" && notificationsEnabled);
+
+        if (!canNotify) return;
+
+        await webpush.sendNotification(subscription, JSON.stringify(payload));
+        
     } catch (error) {
         console.error(`Unexpected error in sendNotificationToUser for user ${userId}:`, error);
     }

@@ -1,5 +1,5 @@
 //╔════════════════════════════════════════════════════════════════════════════════╗
-//║                       🎭 MessageReactItems Component                            ║
+//║                       MessageReactItems Component                              ║
 //║     Quick and fun way to react to messages with emojis! Express yourself!      ║
 //╚════════════════════════════════════════════════════════════════════════════════╝
 
@@ -10,29 +10,29 @@ import { useMessageStore } from "../../store/useMessageStore";
 import { useAuthStore } from "../../store/useAuthStore";
 
 export default function MessageReactItems({ message }) {
-  const { reactToMessage } = useMessageStore();
-  const { authUser } = useAuthStore(); // 🔑 Your digital identity
+  const { currentChatId, reactToMessage } = useMessageStore();
+  const { authUser } = useAuthStore(); // Your digital identity
 
-  // 🚫 Safety First: No auth? No reactions!
+  // Safety First: No auth? No reactions!
   if (!authUser) return null;
 
   const [showFullPicker, setShowFullPicker] = useState(false);
 
   //══════════════════════════════ Helper Functions ══════════════════════════════//
 
-  // 🔍 Detective work: Find user's existing reaction
+  // Detective work: Find user's existing reaction
   const userReaction = message.reactions?.find((r) => {
     const reactionUserId =
       typeof r.user === "string" ? r.user : r.user?._id?.toString();
     return reactionUserId === authUser?._id?.toString();
   });
 
-  // 🎯 Quick-access emoji arsenal
+  // Quick-access emoji arsenal
   const quickEmojis = ["❤️", "💀", "😂", "😭", "👍🏻"];
 
-  // 🎪 Emoji Selection Handler - Works for both quick picks and full picker
+  // Emoji Selection Handler - Works for both quick picks and full picker
   async function handleEmojiClick(emoji) {
-    await reactToMessage(message._id, emoji);
+    await reactToMessage(currentChatId, message._id, emoji);
     setShowFullPicker(false); // Clean up: Close picker after selection
   }
 
@@ -40,7 +40,7 @@ export default function MessageReactItems({ message }) {
 
   return (
     <div className="relative group">
-      {/* 🚀 Quick Reaction Bar - Floating emoji menu */}
+      {/* Quick Reaction Bar - Floating emoji menu */}
       <div className="bg-white/10 rounded-full shadow px-2 py-1">
         {quickEmojis.map((emoji) => (
           <button
@@ -56,7 +56,7 @@ export default function MessageReactItems({ message }) {
           </button>
         ))}
 
-        {/* 🎨 Emoji Explorer Button - Unlock more emotions! */}
+        {/* Emoji Explorer Button - Unlock more emotions! */}
         <button
           onClick={() => setShowFullPicker((prev) => !prev)}
           className="cursor-pointer"
@@ -65,7 +65,7 @@ export default function MessageReactItems({ message }) {
         </button>
       </div>
 
-      {/* 🌈 Full Emoji Paradise - When quick reactions aren't enough */}
+      {/* Full Emoji Paradise - When quick reactions aren't enough */}
       {showFullPicker && (
         <div className="absolute z-50 top-10 right-0">
           <Picker onEmojiClick={(e) => handleEmojiClick(e.emoji)} />

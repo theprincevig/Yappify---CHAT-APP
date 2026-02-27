@@ -15,18 +15,17 @@ import ProfileLoader from "../../Components/LoaderEffects/ProfileLoader";
 
 export default function ViewOtherProfile() {
     // ----------- Hooks & Stores -----------
-    const { profileId } = useParams();
+    const { userId } = useParams();
     const navigate = useNavigate();
-    const { viewProfile } = useAuthStore();
+    const { viewProfile, isLoadingProfile } = useAuthStore();
     const { setCurrentChat } = useMessageStore();
-    const {            
-            loading,
+    const {
             checkStatus,
             sendRequest,
             acceptRequest,
             rejectRequest,
             cancelRequest,
-            removeFriend,
+            removeFriends,
             initFriendSocket,
             disconnectFriendSocket
         } = useFriendStore();
@@ -39,12 +38,12 @@ export default function ViewOtherProfile() {
 
     // ----------- Friend Actions Map -----------
     const actionsMap = friendActionsMap({
-            sendRequest,
-            cancelRequest,
-            acceptRequest,
-            rejectRequest,
-            removeFriend
-        });
+        sendRequest,
+        acceptRequest,
+        rejectRequest,
+        cancelRequest,
+        removeFriends
+    });
 
     // ===========================
     //   Fetch Profile & Status
@@ -53,20 +52,22 @@ export default function ViewOtherProfile() {
         async function fetchProfile() {
             try {
                 // --- Get user profile data ---
-                const profileData = await viewProfile(profileId);
+                const profileData = await viewProfile(userId);
                 if (!profileData) return;
 
                 setUser(profileData);
 
                 // --- Check friendship status ---
-                const statusRes = await checkStatus(profileId);
+                const statusRes = await checkStatus(userId);
                 if (statusRes.status === "accepted") {
                     setFriendStatus("accepted");
+                    setRequestType(null);
                 } else if (statusRes.status === "pending") {
                     setFriendStatus("pending");
                     setRequestType(statusRes.sentBy === "me" ? "sent" : "received");                    
                 } else if (statusRes.status === "rejected") {
                     setFriendStatus("none");
+                    setRequestType(null);
                 }
 
             } catch (error) {
@@ -77,14 +78,14 @@ export default function ViewOtherProfile() {
         fetchProfile();
         initFriendSocket();
         return () => disconnectFriendSocket();
-    }, [profileId, viewProfile, checkStatus, initFriendSocket, disconnectFriendSocket]);
+    }, [userId, viewProfile, checkStatus, initFriendSocket, disconnectFriendSocket]);
 
     // ===========================
     //   Handle Friend Actions
     // ===========================
     async function handleAction(actionType) {
-        const userId = user._id;
-        if (!userId) return;
+        const currUserId = user?._id;
+        if (!currUserId) return;
 
         const action = actionsMap[actionType];
         if (!action) return;
@@ -92,7 +93,7 @@ export default function ViewOtherProfile() {
         setActionLoading(true);
         try {
             // --- Perform action (add/cancel/accept/reject/remove) ---
-            const res = await action.fn(userId);
+            const res = await action.fn(currUserId);
             toast.success(action.success);
 
             // --- Update status & request type ---
@@ -124,7 +125,7 @@ export default function ViewOtherProfile() {
         setCurrentChat(chatId, user);   // update store
 
         // Navigate to chat page
-        navigate("/chat");
+        navigate("/chats");
     }
 
     // ===========================
@@ -135,7 +136,7 @@ export default function ViewOtherProfile() {
             <div className="max-w-2xl mx-auto p-4 py-8">
                 <div className="bg-base-300 rounded-xl p-6 space-y-8 shadow-md">
                     {/* ----------- Loader ----------- */}
-                    {loading ? (
+                    {isLoadingProfile ? (
                         <ProfileLoader />
                     ) : (
                         <>

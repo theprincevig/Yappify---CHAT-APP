@@ -17,18 +17,29 @@ export default function AddFriendPage() {
     // Store & State Initialization
     // -----------------------------
     const {
+        pendingRequests,
+        lastSeenPendingAt,
+        setLastSeenPending,
         searchUser,
         searchResult: storeSearchResult,
         loading,
+        getRequests,
         checkStatus,
         sendRequest,
         acceptRequest,
         rejectRequest,
         cancelRequest,
-        removeFriend,
+        removeFriends,
         initFriendSocket,
         disconnectFriendSocket
     } = useFriendStore();
+
+    const hasNewPending = pendingRequests.received.some(req => {
+        if (!lastSeenPendingAt) return true;
+        return new Date(req.createdAt) > new Date(lastSeenPendingAt);
+    });
+
+    console.log("New pending request : ", hasNewPending);
 
     const [username, setUsername] = useState("");    
     const [status, setStatus] = useState("none");
@@ -41,10 +52,12 @@ export default function AddFriendPage() {
     // ---------------------------------
     useEffect(() => {
         initFriendSocket();
+        getRequests();
+
         return () => {
             disconnectFriendSocket();
         };
-    }, [initFriendSocket, disconnectFriendSocket]);
+    }, []);
 
     // ---------------------------------
     // Handle User Search
@@ -93,7 +106,7 @@ export default function AddFriendPage() {
         cancelRequest,
         acceptRequest,
         rejectRequest,
-        removeFriend
+        removeFriends
     });
 
     // ---------------------------------
@@ -106,15 +119,21 @@ export default function AddFriendPage() {
         const userId = storeSearchResult._id;
         const action = actionsMap[actionType];
 
-        if (!action) return;
+        if (!action) {
+            setActionLoading(false);
+            return;
+        }
 
         try {
             const res = await action.fn(userId);
             toast.success(action.success);
 
+            const newStatus = action.getNewStatus(res);
+            const newRequestType = action.getNewRequestType(res);
+
             // Update UI status after action
-            setStatus(action.getNewStatus(res));
-            setRequestType(action.getNewRequestType(res));
+            setStatus(newStatus);
+            setRequestType(newRequestType);
 
         } catch (error) {
             const message = error.response?.data?.error;
@@ -135,8 +154,15 @@ export default function AddFriendPage() {
     // ---------------------------------
     function handleReset() {
         setUsername("");
+        setStatus("none");
+        setRequestType(null);
         // Clear search result from store
         useFriendStore.setState({ searchResult: null });
+    }
+
+    const handleModeClose = () => {
+        setIsModalOpen(true);
+        setLastSeenPending();
     }
 
     // ---------------------------------
@@ -157,12 +183,21 @@ export default function AddFriendPage() {
             -------------------------------- */}
             <div className="flex justify-center mb-6">
                 <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="btn btn-outline btn-sm btn-secondary font-[Comfortaa] tracking-wide rounded-lg flex items-center gap-2"
+                    onClick={handleModeClose}
+                    className="relative btn btn-outline btn-sm btn-secondary font-[Comfortaa] tracking-wide rounded-lg flex items-center gap-2"
                 >
+                    {hasNewPending && (
+                        <div className="indicator absolute top-0 right-0">
+                            <span className="indicator-item badge badge-primary w-10 h-5 text-xs myfont-kaushan font-light">New</span>
+                        </div>
+                    )}
                     <Users size={15} /> Pending Requests
                 </button>
-                <PendingRequestsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+                <PendingRequestsModal 
+                    pendingRequests={pendingRequests}
+                    isOpen={isModalOpen} 
+                    onClose={() => setIsModalOpen(false)} 
+                />
             </div>
 
             {/* -------------------------------
@@ -208,7 +243,7 @@ export default function AddFriendPage() {
                                 </div>
                             </div>
                             <div>
-                                <Link to={`/chat/profile/${storeSearchResult._id}`} className="card-title">{storeSearchResult.username}</Link>
+                                <Link to={`/users/${storeSearchResult._id}`} className="card-title">{storeSearchResult.username}</Link>
                                 <p className="text-sm text-base-content/70">{storeSearchResult.fullName}</p>
                             </div>
                         </div>
