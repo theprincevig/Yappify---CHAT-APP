@@ -10,7 +10,7 @@ const port = process.env.PORT || 8080;
 // Imports
 // --------------------
 const express = require("express"); // Express framework
-const User = require("./models/user.js"); // User model
+const User = require("./models/user.model.js"); // User model
 const { app, server } = require("./config/socket.Config.js"); // Express app & server with Socket.io
 const { connectDB } = require("./config/db.js"); // MongoDB connection function
 const { session, sessionOptions } = require("./config/session.Config.js"); // session middleware function
