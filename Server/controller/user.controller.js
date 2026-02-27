@@ -1,5 +1,5 @@
 // Importing the User model
-const User = require("../models/user.js");
+const User = require("../models/user.model.js");
 
 // --------------------
 // CHECK AUTHENTICATION STATUS

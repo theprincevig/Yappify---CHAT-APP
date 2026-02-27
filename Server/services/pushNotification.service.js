@@ -1,5 +1,5 @@
 const webpush = require('../config/webPush.Config');
-const User = require('../models/user');
+const User = require('../models/user.model');
 
 /**
  * Sends a push notification to a specific user if they have a valid subscription.

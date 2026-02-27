@@ -1,9 +1,9 @@
 // =======================
 // Imports
 // =======================
-const Message = require("../models/message.js");
-const FriendRequest = require("../models/friendRequest.js");
-const Chat = require("../models/chat.js");
+const Message = require("../models/message.model.js");
+const FriendRequest = require("../models/friendRequest.model.js");
+const Chat = require("../models/chat.model.js");
 const { sendNotificationToUser } = require("../services/pushNotification.service.js");
 const { getReceiverSocketId, io } = require("../config/socket.Config.js");
 

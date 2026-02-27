@@ -1,9 +1,9 @@
 // =====================
 // IMPORTS & UTILITIES
 // =====================
-const FriendRequest = require("../models/friendRequest");
-const User = require("../models/user.js");
-const Chat = require("../models/chat.js");
+const FriendRequest = require("../models/friendRequest.model.js");
+const User = require("../models/user.model.js");
+const Chat = require("../models/chat.model.js");
 
 const { sendNotificationToUser } = require("../services/pushNotification.service.js");
 const emitToUser = require("../utils/emitToUser");
